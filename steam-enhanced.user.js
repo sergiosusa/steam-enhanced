@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.2
+// @version      0.3
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
-// @match        https://store.steampowered.com/account/registerkey
+// @match        https://store.steampowered.com/account/registerkey*
 // @grant        none
 // @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js
 // ==/UserScript==
@@ -68,6 +68,9 @@ function MassiveActivator() {
 
         let activatingButton = document.querySelector("#activatingButton");
         activatingButton.onclick = this.startActivating;
+
+        this.fillKeysField();
+
     };
 
     this.startActivating = () => {
@@ -118,6 +121,14 @@ function MassiveActivator() {
 
     this.fillRequiredFields = () => {
         document.querySelector("#accept_ssa").checked = true;
+    };
+
+    this.fillKeysField = () => {
+        let urlSearchParams = new URLSearchParams(window.location.search);
+
+        if (urlSearchParams.has("key")) {
+            document.querySelector("#textarea-keys").innerText = urlSearchParams.get("key");
+        }
     };
 }
 
