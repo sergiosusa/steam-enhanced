@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.1
+// @version      0.2
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -79,7 +79,7 @@ function MassiveActivator() {
             return;
         }
 
-        let keyList = keys.split(",");
+        this.keyList = keys.split(",");
 
         document.querySelector("#massiveActivatorContainer").style.opacity = "0.2";
 
@@ -96,15 +96,20 @@ function MassiveActivator() {
                 return;
             }
 
-            let key = keyList.shift();
+            let key = this.keyList.shift();
             document.querySelector("#product_key").value = key.trim();
             RegisterProductKey();
 
             setTimeout((() => {
-                let gameName = document.querySelector("div.registerkey_lineitem").innerHTML;
-                if (this.gamesActived.indexOf(gameName) === -1) {
-                    this.gamesActived.push(gameName);
+                let responseContainer = document.querySelector("div.registerkey_lineitem");
+
+                if (responseContainer) {
+                    let gameName = responseContainer.innerHTML;
+                    if (this.gamesActived.indexOf(gameName) === -1) {
+                        this.gamesActived.push(gameName);
+                    }
                 }
+
             }).bind(this), 3000);
 
 
