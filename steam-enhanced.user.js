@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.3
+// @version      0.4
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
 // @match        https://store.steampowered.com/account/registerkey*
-// @grant        none
+// @match        https://steamcommunity.com/*tradingcards/boostercreator/
+// @grant        GM_setClipboard
 // @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js
 // ==/UserScript==
 
@@ -24,7 +25,8 @@ function SteamEnhanced() {
 
     this.rendererList = [
         new HistoryChart(),
-        new MassiveActivator()
+        new MassiveActivator(),
+        new BoosterPackPricesExtractor()
     ];
 
     this.render = () => {
@@ -41,7 +43,7 @@ function Renderer() {
     this.handlePage = "";
 
     this.canHandleCurrentPage = () => {
-        return document.location.href.includes(this.handlePage);
+        return null !== document.location.href.match(this.handlePage);
     };
 
     this.showAlert = (text) => {
@@ -51,7 +53,7 @@ function Renderer() {
 
 function MassiveActivator() {
     Renderer.call(this);
-    this.handlePage = "https://store.steampowered.com/account/registerkey";
+    this.handlePage = /https:\/\/store.steampowered\.com\/account\/registerkey(\?.*)*/g;
     this.processId = null;
     this.keyList = [];
     this.gamesActived = [];
@@ -136,7 +138,7 @@ MassiveActivator.prototype = Object.create(Renderer.prototype);
 
 function HistoryChart() {
     Renderer.call(this);
-    this.handlePage = "https://store.steampowered.com/account/history/";
+    this.handlePage = /https:\/\/store\.steampowered\.com\/account\/history\//g;
 
     this.labels = [];
     this.delta = [];
@@ -231,3 +233,35 @@ function HistoryChart() {
 }
 
 HistoryChart.prototype = Object.create(Renderer.prototype);
+
+function BoosterPackPricesExtractor() {
+    Renderer.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator\//g;
+
+    this.render = () => {
+
+        let container = document.querySelector(".goostatus_right");
+        let paragraph = document.createElement('p');
+        paragraph.innerHTML = '<a id="extractButton" href="javascript:void()">Extract the games\' list with the price in gems to the clipboard.</a>';
+        container.appendChild(paragraph);
+        document.querySelector('#extractButton').onclick = this.extract;
+    }
+
+    this.extract = () => {
+        let boosterGameSelector = document.querySelector("#booster_game_selector");
+        let result = [];
+
+        for (let index = 1; index < boosterGameSelector.options.length; index++) {
+
+            let boosterGameNode = CBoosterCreatorPage.CreateBoosterOption(boosterGameSelector.options[index].value, false);
+            if (boosterGameNode && boosterGameNode[0] !== undefined) {
+                result.push(boosterGameSelector.options[index].text + "\t" + parseInt((/\d+\.*\d+/g).exec(boosterGameNode[0].innerText)[0].replace(".", "")));
+            }
+        }
+        GM_setClipboard(result.join("\n"));
+        alert("Game list copied");
+    };
+}
+
+BoosterPackPricesExtractor.prototype = Object.create(Renderer.prototype);
