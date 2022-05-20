@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.4
+// @version      0.5
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
 // @match        https://store.steampowered.com/account/registerkey*
 // @match        https://steamcommunity.com/*tradingcards/boostercreator/
+// @match        https://steamcommunity.com/*
+// @match        https://*.steampowered.com/*
 // @grant        GM_setClipboard
 // @require      https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js
 // ==/UserScript==
@@ -29,9 +31,20 @@ function SteamEnhanced() {
         new BoosterPackPricesExtractor()
     ];
 
+    this.globalRenderList = [
+        new RedeemButton()
+    ];
+
+    this.globalRender = function () {
+        return this.globalRenderList.map(renderer => renderer.render());
+    }
+
     this.render = () => {
         let renderer = this.findRenderer();
-        renderer.render();
+        if (renderer){
+            renderer.render();
+        }
+        this.globalRender();
     }
 
     this.findRenderer = () => {
@@ -265,3 +278,59 @@ function BoosterPackPricesExtractor() {
 }
 
 BoosterPackPricesExtractor.prototype = Object.create(Renderer.prototype);
+
+function RedeemButton() {
+    Renderer.call(this);
+
+    this.handlePage = /.*/g;
+
+    this.render = () => {
+
+        switch (window.location.pathname) {
+            case "/chat/":
+                this.renderButtonInChatPage();
+                break;
+            default:
+                this.renderButtonStandardPage();
+        }
+    }
+
+    this.renderButtonStandardPage = () => {
+        let pivotElement = document.querySelector(".supernav_container a.username");
+
+        if (null == pivotElement){
+            return;
+        }
+
+        let redeemLink = this.getRedeemBaseButton();
+        redeemLink.className = "menuitem";
+        redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
+        pivotElement.parentNode.insertBefore(redeemLink, pivotElement.nextSibling);
+    }
+
+    this.renderButtonInChatPage = () => {
+        let intervalId = setInterval((() => {
+            let pivotElement = document.querySelector("#friendslist-container > div > div.main_SteamPageHeader_3EaXO > a:nth-child(4)");
+
+            if (null == pivotElement){
+                return;
+            }
+
+            clearInterval(intervalId);
+
+            let redeemLink = this.getRedeemBaseButton();
+            redeemLink.className = "main_SteamPageHeaderTopLink_17wXz";
+            pivotElement.parentNode.insertBefore(redeemLink, pivotElement.nextSibling);
+        }).bind(this), 2000);
+    }
+
+    this.getRedeemBaseButton = () => {
+        let redeemLink = document.createElement("a");
+        redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
+        redeemLink.innerText = "redeem";
+        redeemLink.target = "_blank";
+        return redeemLink;
+    }
+}
+
+BoosterPackPricesExtractor.prototype = Object.create(RedeemButton.prototype);
