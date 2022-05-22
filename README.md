@@ -5,6 +5,7 @@ This script enhanced the famous marketplace **[Steam](https://store.steampowered
 * Add a massive game activation option to [register key page](https://store.steampowered.com/account/registerkey).
 * Add a chart of balance evolution and portfolio movements to [purchase history page](https://store.steampowered.com/account/history/).
 * Add an option to extract all booster packs prices in gems from [booster pack creator page](https://steamcommunity.com//tradingcards/boostercreator).
+* Add an extra button in all menu across the site to link games activations page.
 
 ### Supported sites
 
@@ -37,6 +38,9 @@ No extra configuration required.
 ![Chart on purchase history page](screenshots/steam-enhanced-2.png)
 
 ![Extract booster packs prices in gems option](screenshots/steam-enhanced-3.png)
+
+![Redeem button](screenshots/steam-enhanced-4.png)
+
 
 ### ☕Buy me a coffee☕
 
