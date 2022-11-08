@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.5
+// @version      0.6
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -250,7 +250,7 @@ HistoryChart.prototype = Object.create(Renderer.prototype);
 function BoosterPackPricesExtractor() {
     Renderer.call(this);
 
-    this.handlePage = /https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator\//g;
+    this.handlePage = /https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator(\/)?/g;
 
     this.render = () => {
 
