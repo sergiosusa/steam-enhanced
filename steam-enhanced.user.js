@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.6
+// @version      0.8
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -310,7 +310,7 @@ function RedeemButton() {
 
     this.renderButtonInChatPage = () => {
         let intervalId = setInterval((() => {
-            let pivotElement = document.querySelector("#friendslist-container > div > div.main_SteamPageHeader_3EaXO > a:nth-child(4)");
+            let pivotElement = document.querySelector('#friendslist-container > div > div[class*="main_SteamPageHeader"] > a:nth-child(4)');
 
             if (null == pivotElement){
                 return;
@@ -319,7 +319,7 @@ function RedeemButton() {
             clearInterval(intervalId);
 
             let redeemLink = this.getRedeemBaseButton();
-            redeemLink.className = "main_SteamPageHeaderTopLink_17wXz";
+            redeemLink.className = pivotElement.className;
             pivotElement.parentNode.insertBefore(redeemLink, pivotElement.nextSibling);
         }).bind(this), 2000);
     }
