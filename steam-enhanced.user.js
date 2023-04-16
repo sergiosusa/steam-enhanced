@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.8
+// @version      0.9
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -24,6 +24,7 @@
 })();
 
 function SteamEnhanced() {
+    Renderer.call(this);
 
     this.rendererList = [
         new HistoryChart(),
@@ -34,10 +35,13 @@ function SteamEnhanced() {
     this.globalRenderList = [
         new RedeemButton()
     ];
+}
 
-    this.globalRender = function () {
-        return this.globalRenderList.map(renderer => renderer.render());
-    }
+SteamEnhanced.prototype = Object.create(Renderer.prototype);
+
+function Renderer() {
+    this.rendererList = [];
+    this.globalRenderList = [];
 
     this.render = () => {
         let renderer = this.findRenderer();
@@ -50,9 +54,13 @@ function SteamEnhanced() {
     this.findRenderer = () => {
         return this.rendererList.find(renderer => renderer.canHandleCurrentPage());
     };
+
+    this.globalRender = function () {
+        return this.globalRenderList.map(renderer => renderer.render());
+    }
 }
 
-function Renderer() {
+function Renderable() {
     this.handlePage = "";
 
     this.canHandleCurrentPage = () => {
@@ -65,7 +73,7 @@ function Renderer() {
 }
 
 function MassiveActivator() {
-    Renderer.call(this);
+    Renderable.call(this);
     this.handlePage = /https:\/\/store.steampowered\.com\/account\/registerkey(\?.*)*/g;
     this.processId = null;
     this.keyList = [];
@@ -135,7 +143,9 @@ function MassiveActivator() {
     };
 
     this.fillRequiredFields = () => {
-        document.querySelector("#accept_ssa").checked = true;
+        setInterval(() => {
+            document.querySelector("#accept_ssa").checked = true;
+        }, 2000);
     };
 
     this.fillKeysField = () => {
@@ -147,10 +157,10 @@ function MassiveActivator() {
     };
 }
 
-MassiveActivator.prototype = Object.create(Renderer.prototype);
+MassiveActivator.prototype = Object.create(Renderable.prototype);
 
 function HistoryChart() {
-    Renderer.call(this);
+    Renderable.call(this);
     this.handlePage = /https:\/\/store\.steampowered\.com\/account\/history\//g;
 
     this.labels = [];
@@ -245,10 +255,10 @@ function HistoryChart() {
     };
 }
 
-HistoryChart.prototype = Object.create(Renderer.prototype);
+HistoryChart.prototype = Object.create(Renderable.prototype);
 
 function BoosterPackPricesExtractor() {
-    Renderer.call(this);
+    Renderable.call(this);
 
     this.handlePage = /https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator(\/)?/g;
 
@@ -277,10 +287,10 @@ function BoosterPackPricesExtractor() {
     };
 }
 
-BoosterPackPricesExtractor.prototype = Object.create(Renderer.prototype);
+BoosterPackPricesExtractor.prototype = Object.create(Renderable.prototype);
 
 function RedeemButton() {
-    Renderer.call(this);
+    Renderable.call(this);
 
     this.handlePage = /.*/g;
 
