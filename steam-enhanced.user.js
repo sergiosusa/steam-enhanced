@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.9
+// @version      0.10
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -116,6 +116,7 @@ function MassiveActivator() {
                 document.querySelector("#massiveActivatorContainer").style.opacity = "1";
                 if (this.gamesActived.length > 0) {
                     this.showAlert("The activation process has finished.\n\nThe following games have been activated:\n" + this.gamesActived.join("\n"));
+                    this.gamesActived = [];
                 } else {
                     this.showAlert("No key has been activated successfully");
                 }
@@ -137,7 +138,6 @@ function MassiveActivator() {
                 }
 
             }).bind(this), 3000);
-
 
         }).bind(this), 5000);
     };
