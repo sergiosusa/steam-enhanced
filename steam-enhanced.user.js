@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.10
+// @version      0.11
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -29,7 +29,8 @@ function SteamEnhanced() {
     this.rendererList = [
         new HistoryChart(),
         new MassiveActivator(),
-        new BoosterPackPricesExtractor()
+        new BoosterPackPricesExtractor(),
+        new TradeOffersHelper()
     ];
 
     this.globalRenderList = [
@@ -71,6 +72,50 @@ function Renderable() {
         alert(text);
     }
 }
+
+function TradeOffersHelper() {
+    Renderable.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/tradeoffers\//g
+
+    this.render = () => {
+
+        document.querySelectorAll(".trade_item").forEach(function (tradeItem) {
+
+            let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
+
+            fetch(
+                "https://steamcommunity.com/economy/itemclasshover/[APP]/[CLASS]/0?content_only=1&l=english"
+                .replace("[APP]", itemInfo[1])
+                .replace("[CLASS]", itemInfo[2])
+            ).then(function (response) {
+                return response.text();
+        }).then(function(text){
+            console.log(text.match(/app_(\d*)/));
+            
+        tradeItem.innerHTML = tradeItem.innerHTML + 
+        "<div style='text-align:center;'>" + 
+        "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + text.match(/app_(\d*)/)[1] + "'>" + 
+        "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" + 
+        "</a>" + 
+        "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + text.match(/app_(\d*)/)[1] + "'>" + 
+        "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" + 
+        "</a>" + 
+        "</div>";
+
+        tradeItem.style.height = "95px";
+
+        }).catch(function (err) {
+                // There was an error
+                console.warn('Something went wrong.', err);
+            });
+
+        });
+    };
+
+}
+
+TradeOffersHelper.prototype = Object.create(Renderable.prototype);
 
 function MassiveActivator() {
     Renderable.call(this);
@@ -145,7 +190,7 @@ function MassiveActivator() {
     this.fillRequiredFields = () => {
         setInterval(() => {
             document.querySelector("#accept_ssa").checked = true;
-        }, 2000);
+        }, 1000);
     };
 
     this.fillKeysField = () => {
