@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.11
+// @version      0.12
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -46,7 +46,7 @@ function Renderer() {
 
     this.render = () => {
         let renderer = this.findRenderer();
-        if (renderer){
+        if (renderer) {
             renderer.render();
         }
         this.globalRender();
@@ -80,39 +80,38 @@ function TradeOffersHelper() {
 
     this.render = () => {
 
-        document.querySelectorAll(".trade_item").forEach(function (tradeItem) {
+        let tradeItems = document.querySelectorAll(".trade_item");
+
+        for (let index = 0; index < tradeItems.length && index < 30 ; index++) {
+            let tradeItem = tradeItems[index];
 
             let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
 
             fetch(
                 "https://steamcommunity.com/economy/itemclasshover/[APP]/[CLASS]/0?content_only=1&l=english"
-                .replace("[APP]", itemInfo[1])
-                .replace("[CLASS]", itemInfo[2])
+                    .replace("[APP]", itemInfo[1])
+                    .replace("[CLASS]", itemInfo[2])
             ).then(function (response) {
                 return response.text();
-        }).then(function(text){
-            console.log(text.match(/app_(\d*)/));
-            
-        tradeItem.innerHTML = tradeItem.innerHTML + 
-        "<div style='text-align:center;'>" + 
-        "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + text.match(/app_(\d*)/)[1] + "'>" + 
-        "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" + 
-        "</a>" + 
-        "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + text.match(/app_(\d*)/)[1] + "'>" + 
-        "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" + 
-        "</a>" + 
-        "</div>";
-
-        tradeItem.style.height = "95px";
-
-        }).catch(function (err) {
-                // There was an error
+            }).then(function (text) {
+                tradeItem.innerHTML = tradeItem.innerHTML + template(text.match(/app_(\d*)/)[1]);
+                tradeItem.style.height = "95px";
+            }).catch(function (err) {
                 console.warn('Something went wrong.', err);
             });
-
-        });
+        }
     };
 
+    function template(appid) {
+        return  "<div style='text-align:center;'>" +
+        "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
+        "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
+        "</a>" +
+        "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
+        "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
+        "</a>" +
+        "</div>";
+    }
 }
 
 TradeOffersHelper.prototype = Object.create(Renderable.prototype);
@@ -353,7 +352,7 @@ function RedeemButton() {
     this.renderButtonStandardPage = () => {
         let pivotElement = document.querySelector(".supernav_container a.username");
 
-        if (null == pivotElement){
+        if (null == pivotElement) {
             return;
         }
 
@@ -367,7 +366,7 @@ function RedeemButton() {
         let intervalId = setInterval((() => {
             let pivotElement = document.querySelector('#friendslist-container > div > div[class*="main_SteamPageHeader"] > a:nth-child(4)');
 
-            if (null == pivotElement){
+            if (null == pivotElement) {
                 return;
             }
 
