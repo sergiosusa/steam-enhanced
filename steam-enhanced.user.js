@@ -189,7 +189,7 @@ function MassiveActivator() {
     this.fillRequiredFields = () => {
         setInterval(() => {
             document.querySelector("#accept_ssa").checked = true;
-        }, 1000);
+        }, 500);
     };
 
     this.fillKeysField = () => {
