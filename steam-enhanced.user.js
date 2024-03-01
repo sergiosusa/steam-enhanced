@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.12
+// @version      0.13
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -30,7 +30,8 @@ function SteamEnhanced() {
         new HistoryChart(),
         new MassiveActivator(),
         new BoosterPackPricesExtractor(),
-        new TradeOffersHelper()
+        new TradeOffersHelper(),
+        new GameCardLinks(),
     ];
 
     this.globalRenderList = [
@@ -72,6 +73,29 @@ function Renderable() {
         alert(text);
     }
 }
+
+function GameCardLinks() {
+    Renderable.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g
+
+    this.render = () => {
+        let container = document.querySelector(".profile_small_header_text");
+        container.innerHTML += this.template();
+    }
+
+    this.template = () => {
+
+        let appId = document.location.pathname.match(/\/id\/(.*)\/gamecards\/(\d+)\//)[2];
+
+        return '<div class="apphub_OtherSiteInfo" style="float: right;margin-left: 5px;"><a class="btnv6_blue_hoverfade btn_medium" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-' + appId + '"\n' +
+            '           target="_blank">\n' +
+            '            <span>Steam Card Exchange</span>\n' +
+            '        </a></div>';
+    }
+}
+
+GameCardLinks.prototype = Object.create(Renderable.prototype);
 
 function TradeOffersHelper() {
     Renderable.call(this);
