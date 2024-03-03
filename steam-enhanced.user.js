@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.13
+// @version      0.14
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -86,7 +86,7 @@ function GameCardLinks() {
 
     this.template = () => {
 
-        let appId = document.location.pathname.match(/\/id\/(.*)\/gamecards\/(\d+)\//)[2];
+        let appId = document.location.pathname.match(/\/id\/(.*)\/gamecards\/(\d+)/)[2];
 
         return '<div class="apphub_OtherSiteInfo" style="float: right;margin-left: 5px;"><a class="btnv6_blue_hoverfade btn_medium" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-' + appId + '"\n' +
             '           target="_blank">\n' +
