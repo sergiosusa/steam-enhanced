@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.14
+// @version      0.15
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -260,6 +260,11 @@ function HistoryChart() {
         rows.forEach((row) => {
 
             let currentDate = row.querySelector(".wht_date").innerText.replace(/\d+\s/i, "");
+
+            if (row.querySelector(".wht_wallet_change") === null || row.querySelector(".wht_wallet_balance") === null) {
+                return;
+            }
+
             let currentDelta = parseFloat(row.querySelector(".wht_wallet_change").innerText.replace("€", "").replace(",", "."));
             let currentWallet = parseFloat(row.querySelector(".wht_wallet_balance").innerText.replace("€", "").replace(",", "."));
 
