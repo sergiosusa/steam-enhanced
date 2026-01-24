@@ -27,7 +27,7 @@ function SteamEnhanced() {
     Renderer.call(this);
 
     this.rendererList = [
-        new HistoryChart(),
+        new WalletBalanceChart(),
         new MassiveActivator(),
         new BoosterPackPricesExtractor(),
         new TradeOffersHelper(),
@@ -262,7 +262,7 @@ GameCardLinks.prototype = Object.create(Renderable.prototype);
 function TradeOffersHelper() {
     Renderable.call(this);
 
-    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/tradeoffers\//g
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/tradeoffers/g
 
     this.render = () => {
 
@@ -280,7 +280,7 @@ function TradeOffersHelper() {
             ).then(function (response) {
                 return response.text();
             }).then(function (text) {
-                tradeItem.innerHTML = tradeItem.innerHTML + template(text.match(/app_(\d*)/)[1]);
+                tradeItem.innerHTML = template(text.match(/app_(\d*)/)[1]) + tradeItem.innerHTML;
                 tradeItem.style.height = "95px";
             }).catch(function (err) {
                 console.warn('Something went wrong.', err);
@@ -389,7 +389,7 @@ function MassiveActivator() {
 
 MassiveActivator.prototype = Object.create(Renderable.prototype);
 
-function HistoryChart() {
+function WalletBalanceChart() {
     Renderable.call(this);
     this.handlePage = /https:\/\/store\.steampowered\.com\/account\/history\//g;
 
@@ -490,7 +490,7 @@ function HistoryChart() {
     };
 }
 
-HistoryChart.prototype = Object.create(Renderable.prototype);
+WalletBalanceChart.prototype = Object.create(Renderable.prototype);
 
 function BoosterPackPricesExtractor() {
     Renderable.call(this);

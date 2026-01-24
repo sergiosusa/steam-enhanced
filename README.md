@@ -2,10 +2,13 @@
 
 This script enhanced the famous marketplace **[Steam](https://store.steampowered.com/)** adding:
 
-* Add a massive game activation option to [register key page](https://store.steampowered.com/account/registerkey).
-* Add a chart of balance evolution and portfolio movements to [purchase history page](https://store.steampowered.com/account/history/).
-* Add an option to extract all booster packs prices in gems from [booster pack creator page](https://steamcommunity.com//tradingcards/boostercreator).
+* Add a new game activation field that support multiples keys separate by comma to [register key page](https://store.steampowered.com/account/registerkey).
+* Add a chart of the wallet balance based on the transaction list in [purchase history page](https://store.steampowered.com/account/history/).
 * Add an extra button in all menu across the site to link games activations page.
+* Add an analysis summary about booter pack earned in the [inventory history page](https://steamcommunity.com/id/s3rxus/inventoryhistory)
+* Add links to SteamTrade Matcher and the game's badge page in the [trade offers page](https://steamcommunity.com/id/s3rxus/tradeoffers/)  
+* Add link to SteamTrade Matcher page in the [game's badge page](https://steamcommunity.com/id/s3rxus/gamecards/281750)
+* Add an option to extract all booster packs prices in gems from [booster pack creator page](https://steamcommunity.com//tradingcards/boostercreator).
 
 ### Supported sites
 
@@ -33,7 +36,7 @@ No extra configuration required.
 
 ## 📷Screenshots📷
 
-![Massive game activation option](screenshots/steam-enhanced-1.png)
+![Multiple game activation option](screenshots/steam-enhanced-1.png)
 
 ![Chart on purchase history page](screenshots/steam-enhanced-2.png)
 
@@ -42,6 +45,12 @@ No extra configuration required.
 ![Redeem button](screenshots/steam-enhanced-4.png)
 
 ![Extract booster packs prices in gems option](screenshots/steam-enhanced-3.png)
+
+![links to SteamTrade Matcher and the game’s badge page on the trade offers page](screenshots/steam-enhanced-6.png)
+
+![link to the SteamTrade Matcher page on the game’s badge page](screenshots/steam-enhanced-7.png)
+
+
 
 ### ☕Buy me a coffee☕
 
