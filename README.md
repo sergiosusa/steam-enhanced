@@ -56,6 +56,5 @@ No extra configuration required.
 
 If you want to support my scripts consider to use:
 
-- My Amazon [affiliate link](https://amazon.es/?tag=sergiosusa-21) or add this query string ``?tag=sergiosusa-21`` before add a product to the basket when you buy on Amazon spain.
-- My Letyshops [referal link](https://letyshops.com/es/winwin?ww=17530599) to get €5 each.
 - My Payme [link](https://paypal.me/sergiosusa?locale.x=es_ES) to send me a tip.
+- My Letyshops [referal link](https://letyshops.com/es/winwin?ww=17530599) to get €5 each.
