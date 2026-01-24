@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.15
+// @version      0.16
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -32,6 +32,7 @@ function SteamEnhanced() {
         new BoosterPackPricesExtractor(),
         new TradeOffersHelper(),
         new GameCardLinks(),
+        new BoosterPackFrequencyAnalyser()
     ];
 
     this.globalRenderList = [
@@ -74,6 +75,167 @@ function Renderable() {
     }
 }
 
+function BoosterPackFrequencyAnalyser() {
+    Renderable.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/inventoryhistory/g
+
+    this.render = () => {
+        let referenceNode = document.querySelector("#BG_bottom #mainContents #inventory_history_table");
+
+        const containerNode = this.templateContainerNode();
+
+        containerNode.innerHTML = '<div style="display: flex; justify-content: center; flex-direction: column;">' +
+            '<div id="analysis-result"></div>' +
+            '<div style="display: flex;justify-content: space-evenly;">' +
+            '<a id="load-more-and-re-calculate" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Load more and Recalculate</span></a>' +
+            '<a id="show-booster-packs" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Show Only Booster packs</span></a>' +
+            '</div>' +
+            '</div>';
+        referenceNode.parentNode.insertBefore(containerNode, referenceNode);
+
+        document.querySelector("#show-booster-packs").addEventListener('click', this.hideNonBoosterPackEntrance)
+        document.querySelector("#load-more-and-re-calculate").addEventListener('click', this.loadMoreHistoryAndReCalculate)
+        document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
+    }
+
+    this.loadMoreHistoryAndReCalculate = () => {
+        InventoryHistory_LoadMore();
+
+        setTimeout(() => {
+            document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
+        }, 3000);
+
+    }
+
+    this.hideNonBoosterPackEntrance = () => {
+        // Seleccionamos todos los nodos de historial
+        const rows = document.querySelectorAll('.tradehistoryrow');
+
+        rows.forEach(row => {
+            const description = row.querySelector('.tradehistory_event_description');
+
+            if (description && description.textContent.includes('Earned a booster pack')) {
+                // Mostramos este nodo
+                row.style.display = '';
+            } else {
+                // Ocultamos los que no sean booster packs
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    this.renderBoosterStats = (packs) => {
+        if (!packs || packs.length === 0) return '<div>No hay booster packs registrados.</div>';
+
+        // Ordenamos por fecha ascendente
+        packs.sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate));
+
+        const totalPacks = packs.length;
+
+        // Juegos distintos
+        const gamesSet = new Set(packs.map(p => p.gameName));
+        const totalGames = gamesSet.size;
+
+        // Intervalos entre packs (en días)
+        const intervals = [];
+        for (let i = 1; i < packs.length; i++) {
+            const diffMs = new Date(packs[i].fullDate) - new Date(packs[i - 1].fullDate);
+            intervals.push(diffMs / (1000 * 60 * 60 * 24)); // convertir a días
+        }
+        const avgInterval = intervals.length > 0 ? (intervals.reduce((a, b) => a + b, 0) / intervals.length).toFixed(2) : 'N/A';
+
+        // Último pack
+        const lastPack = packs[packs.length - 1];
+        const lastDateStr = new Date(lastPack.fullDate).toLocaleString();
+
+        // Próximo pack estimado
+        const nextPackDate = intervals.length > 0 ? new Date(new Date(lastPack.fullDate).getTime() + intervals.reduce((a, b) => a + b, 0) / intervals.length * 24 * 60 * 60 * 1000) : null;
+        const nextPackStr = nextPackDate ? nextPackDate.toLocaleString() : 'N/A';
+
+        // Generamos HTML
+        let html = `
+    <div style="background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; color: #fff; font-family: sans-serif;text-align: center;">
+      <h3 style="margin-top:0;">Booster Pack Statistics</h3>
+      <p><strong>Total packs:</strong> ${totalPacks}</p>
+      <p><strong>Distinct games with packs:</strong> ${totalGames} (${[...gamesSet].join(', ')})</p>
+      <p><strong>Average days between packs:</strong> ${avgInterval}</p>
+      <p><strong>Last pack received:</strong> ${lastDateStr} (${lastPack.gameName})</p>
+      <p><strong>Next estimated pack:</strong> ${nextPackStr}</p>
+  `;
+
+        html += '</div>';
+
+        return html;
+    }
+
+    this.extractBooterPackInformation = () => {
+
+        const boosterPacks = [];
+
+        document.querySelectorAll('.tradehistoryrow').forEach(row => {
+            const description = row.querySelector('.tradehistory_event_description');
+
+            if (description && description.textContent.includes('Earned a booster pack')) {
+
+                // Fecha y hora en texto
+                const dateNode = row.querySelector('.tradehistory_date');
+                const dateText = dateNode ? dateNode.childNodes[0].textContent.trim() : '';
+                const timeNode = row.querySelector('.tradehistory_timestamp');
+                const timeText = timeNode ? timeNode.textContent.trim() : '';
+
+                // -------------------------------
+                // Parsear la fecha de forma segura
+                // -------------------------------
+                // Ejemplo: "22 Jan, 2026" -> día, mes, año
+                const [day, monthStr, year] = dateText.replace(',', '').split(' ');
+                const months = {
+                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                };
+                const month = months[monthStr];
+
+                // Parsear hora: "10:08pm"
+                let [time, ampm] = [timeText.slice(0, -2), timeText.slice(-2).toLowerCase()];
+                let [hours, minutes] = time.split(':').map(Number);
+                if (ampm === 'pm' && hours < 12) hours += 12;
+                if (ampm === 'am' && hours === 12) hours = 0;
+
+                const fullDate = new Date(year, month, Number(day), hours, minutes);
+
+                // Nombre del juego sin "Booster Pack"
+                const itemNameNode = row.querySelector('.history_item_name');
+                let gameName = itemNameNode ? itemNameNode.textContent.trim() : '';
+                gameName = gameName.replace(/\s*Booster Pack$/i, '').trim();
+
+                boosterPacks.push({
+                    gameName,
+                    dateText,
+                    timeText,
+                    fullDate
+                });
+            }
+        });
+
+        return boosterPacks;
+    }
+
+    this.templateContainerNode = () => {
+        const containerNode = document.createElement('div');
+        containerNode.style.cssText = `
+          position: relative;
+          background-color: rgba(0, 0, 0, 0.3);
+          padding-left: 0;
+          padding-top: 0px;
+          padding-bottom: 7px;
+          min-height: 36px;
+          margin-bottom: 2px;
+        `;
+        return containerNode;
+    }
+
+}
+
 function GameCardLinks() {
     Renderable.call(this);
 
@@ -106,7 +268,7 @@ function TradeOffersHelper() {
 
         let tradeItems = document.querySelectorAll(".trade_item");
 
-        for (let index = 0; index < tradeItems.length && index < 30 ; index++) {
+        for (let index = 0; index < tradeItems.length && index < 30; index++) {
             let tradeItem = tradeItems[index];
 
             let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
@@ -127,14 +289,14 @@ function TradeOffersHelper() {
     };
 
     function template(appid) {
-        return  "<div style='text-align:center;'>" +
-        "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
-        "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
-        "</a>" +
-        "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
-        "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
-        "</a>" +
-        "</div>";
+        return "<div style='text-align:center;'>" +
+            "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
+            "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
+            "</a>" +
+            "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
+            "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
+            "</a>" +
+            "</div>";
     }
 }
 

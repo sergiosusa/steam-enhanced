@@ -37,10 +37,11 @@ No extra configuration required.
 
 ![Chart on purchase history page](screenshots/steam-enhanced-2.png)
 
-![Extract booster packs prices in gems option](screenshots/steam-enhanced-3.png)
+![Booster pack analyser](screenshots/steam-enhanced-5.png)
 
 ![Redeem button](screenshots/steam-enhanced-4.png)
 
+![Extract booster packs prices in gems option](screenshots/steam-enhanced-3.png)
 
 ### ☕Buy me a coffee☕
 
