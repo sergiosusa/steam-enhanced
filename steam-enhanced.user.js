@@ -32,6 +32,7 @@ function SteamEnhanced() {
         new BoosterPackPricesExtractor(),
         new TradeOffersHelper(),
         new GameCardLinks(),
+        new BoosterPackFrequencyAnalyser()
     ];
 
     this.globalRenderList = [
@@ -74,6 +75,35 @@ function Renderable() {
     }
 }
 
+function BoosterPackFrequencyAnalyser() {
+    Renderable.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/inventoryhistory/g
+
+    this.render = () => {
+        let referenceNode = document.querySelector("#BG_bottom #mainContents #inventory_history_table");
+
+        const containerNode = this.templateContainerNode();
+        containerNode.innerHTML = '<div class="load_more_history_area"><div id="" style="min-width: 300px;text-align: center;padding: 10px;text-transform: uppercase;" class="btnv6_blue_hoverfade btn_medium">Load More</div><div id="" style="min-width: 300px;text-align: center;padding: 10px;text-transform: uppercase;" class="btnv6_blue_hoverfade btn_medium">Show Only Earned booster pack</div></div>';
+        referenceNode.parentNode.insertBefore(containerNode, referenceNode);
+    }
+
+    this.templateContainerNode = () => {
+        const containerNode = document.createElement('div');
+        containerNode.style.cssText = `
+          position: relative;
+          background-color: rgba(0, 0, 0, 0.3);
+          padding-left: 0;
+          padding-top: 19px;
+          padding-bottom: 7px;
+          min-height: 36px;
+          margin-bottom: 2px;
+        `;
+        return containerNode;
+    }
+
+}
+
 function GameCardLinks() {
     Renderable.call(this);
 
@@ -106,7 +136,7 @@ function TradeOffersHelper() {
 
         let tradeItems = document.querySelectorAll(".trade_item");
 
-        for (let index = 0; index < tradeItems.length && index < 30 ; index++) {
+        for (let index = 0; index < tradeItems.length && index < 30; index++) {
             let tradeItem = tradeItems[index];
 
             let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
@@ -127,14 +157,14 @@ function TradeOffersHelper() {
     };
 
     function template(appid) {
-        return  "<div style='text-align:center;'>" +
-        "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
-        "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
-        "</a>" +
-        "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
-        "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
-        "</a>" +
-        "</div>";
+        return "<div style='text-align:center;'>" +
+            "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
+            "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
+            "</a>" +
+            "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
+            "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
+            "</a>" +
+            "</div>";
     }
 }
 
