@@ -53,11 +53,13 @@ No extra configuration required.
 
 ![Collection badge progress](screenshots/steam-enhanced-8.png)
 
+---
+## ☕ Support my work
 
+If you find my scripts useful, consider supporting their development:
 
-### ☕Buy me a coffee☕
+[![PayPal](https://img.shields.io/badge/PayPal-Donate%20a%20tip-blue?style=for-the-badge&logo=paypal)](https://paypal.me/sergiosusa?locale.x=es_ES)
+[![LetyShops](https://img.shields.io/badge/LetyShops-Get_€5_Free-yellow?style=for-the-badge&logo=target)](https://letyshops.com/es/winwin?ww=17530599)
+[![GitHub Stars](https://img.shields.io/github/stars/sergiosusa/steam-enhanced?style=for-the-badge&logo=github&label=Star%20this%20Project&color=black)](https://github.com/sergiosusa/steam-enhanced)
 
-If you want to support my scripts consider to use:
-
-- My Payme [link](https://paypal.me/sergiosusa?locale.x=es_ES) to send me a tip.
-- My Letyshops [referal link](https://letyshops.com/es/winwin?ww=17530599) to get €5 each.
+---
