@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.17
+// @version      0.18
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -145,24 +145,28 @@ function BadgeGameInformation() {
 
     this.calculateBadgeGameInformation = () => {
 
-        let totalCardsCount = document.querySelectorAll(".badge_card_set_card").length;
+        let totalCardsCount = this.getTotalCardsCount();
         let cardsOwnedCount = this.countOwnedCards();
-        let totalCraftableBadges = Math.floor(cardsOwnedCount/totalCardsCount);
+        let totalCraftableBadges = Math.floor(cardsOwnedCount / totalCardsCount);
 
         let craftableBadgesCount = this.calculateCraftableBadges();
-        let extraBadgesCount = totalCraftableBadges - craftableBadgesCount;
+        let extraBadgesCount = this.calculateExtraBadgesCount(totalCraftableBadges, craftableBadgesCount);
         let tradeStatus = this.calculateStatus(totalCraftableBadges);
         let ready = this.calculateMinimumCardQuantity();
 
-       return {
-           totalCards: totalCardsCount,
-           ownedCards: cardsOwnedCount,
-           craftable: craftableBadgesCount,
-           extra: extraBadgesCount,
-           totalPotential: totalCraftableBadges,
-           ready: ready,
-           status: tradeStatus,
-       };
+        return {
+            totalCards: totalCardsCount,
+            ownedCards: cardsOwnedCount,
+            craftable: craftableBadgesCount,
+            extra: extraBadgesCount,
+            totalPotential: totalCraftableBadges,
+            ready: ready,
+            status: tradeStatus,
+        };
+    }
+
+    this.getTotalCardsCount = () => {
+        return document.querySelectorAll(".badge_card_set_card").length;
     }
 
     this.countOwnedCards = () => {
@@ -175,6 +179,11 @@ function BadgeGameInformation() {
 
     this.extractCurrentBadgeLevel = () => {
         const element = document.querySelector('.badge_info_description div:nth-child(2)');
+
+        if (!element) {
+            return 0;
+        }
+
         const text = element.innerText;
 
         const match = text.match(/Level\s+(\d+),/);
@@ -189,11 +198,11 @@ function BadgeGameInformation() {
     this.calculateCraftableBadges = (totalCraftableBadges) => {
         let maxCraftableBadges = 5 - this.extractCurrentBadgeLevel();
 
-        if(maxCraftableBadges === 0) {
+        if (maxCraftableBadges === 0) {
             return 0;
         }
 
-        if(maxCraftableBadges >= totalCraftableBadges) {
+        if (maxCraftableBadges >= totalCraftableBadges) {
             return totalCraftableBadges;
         } else {
             return maxCraftableBadges;
@@ -202,23 +211,16 @@ function BadgeGameInformation() {
 
     this.calculateStatus = (totalCraftableBadges) => {
         let minimumCardQuantity = this.calculateMinimumCardQuantity();
-        let currentBadgeLevel = this.extractCurrentBadgeLevel();
+        let totalCardQuantity = this.countOwnedCards();
 
-        if(currentBadgeLevel === 5) {
-            return {
-                message: "Maximum reached (Level 5)",
-                color: "#ff4d4d"
-            };
-        }
-
-        if(minimumCardQuantity === 0) {
+        if (totalCardQuantity === 0) {
             return {
                 message: "No cards available",
                 color: "#666666"
             };
         }
 
-        if(minimumCardQuantity < totalCraftableBadges) {
+        if (minimumCardQuantity < totalCraftableBadges) {
             return {
                 message: "Trades available",
                 color: "#a3cf06"
@@ -233,6 +235,11 @@ function BadgeGameInformation() {
 
     this.calculateMinimumCardQuantity = () => {
         const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
+        const totalCardsCount = this.getTotalCardsCount();
+
+        if(qtyElements.length !== totalCardsCount) {
+            return 0;
+        }
 
         const quantities = Array.from(qtyElements).map(el => {
             const match = el.innerText.match(/\d+/);
@@ -244,6 +251,13 @@ function BadgeGameInformation() {
         return Math.min(...quantities);
     }
 
+    this.calculateExtraBadgesCount = (totalCraftableBadges, craftableBadgesCount) => {
+        let extraBadgesCount = totalCraftableBadges - craftableBadgesCount;
+        if (extraBadgesCount < 0) {
+            return 0;
+        }
+        return extraBadgesCount;
+    }
 }
 
 BadgeGameInformation.prototype = Object.create(Renderable.prototype);
