@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.16
+// @version      0.17
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
 // @match        https://store.steampowered.com/account/registerkey*
 // @match        https://steamcommunity.com/*tradingcards/boostercreator/
+// @match        https://steamcommunity.com/id/*/gamecards*
 // @match        https://steamcommunity.com/*
 // @match        https://*.steampowered.com/*
 // @grant        GM_setClipboard
@@ -32,7 +33,8 @@ function SteamEnhanced() {
         new BoosterPackPricesExtractor(),
         new TradeOffersHelper(),
         new GameCardLinks(),
-        new BoosterPackFrequencyAnalyser()
+        new BoosterPackFrequencyAnalyser(),
+        new BadgeGameInformation()
     ];
 
     this.globalRenderList = [
@@ -48,14 +50,16 @@ function Renderer() {
 
     this.render = () => {
         let renderer = this.findRenderer();
-        if (renderer) {
+
+        renderer.forEach(renderer => {
             renderer.render();
-        }
+        })
+
         this.globalRender();
     }
 
     this.findRenderer = () => {
-        return this.rendererList.find(renderer => renderer.canHandleCurrentPage());
+        return this.rendererList.filter(renderer => renderer.canHandleCurrentPage());
     };
 
     this.globalRender = function () {
@@ -74,6 +78,175 @@ function Renderable() {
         alert(text);
     }
 }
+
+function BadgeGameInformation() {
+    Renderable.call(this);
+
+    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g
+
+    this.render = () => {
+        const referenceElement = document.querySelector('.badge_detail_tasks');
+
+        const htmlPanel = `<div id="steam-cards-summary-panel" style="border: 1px solid #2d2b2b; border-radius: 3px; min-width: 320px; padding: 12px; background-color: rgba(0, 0, 0, 0.3); color: #afafaf; font-size: 13px; line-height: 1.6;max-width: 50%;margin:8px auto;">
+    <div style="color: #ffffff; font-weight: bold; border-bottom: 1px solid #2d2b2b; padding-bottom: 5px;">
+        Collection Progress
+    </div>
+
+    <div>
+        Cards Owned: <span id="cards-owned-count" style="color: #67c1f5; font-weight: bold;">0</span> / <span id="total-cards-count">0</span>
+    </div>
+    
+    <div>
+        Badges (Ready / Max): <span id="craftable-badges-count-ready" style="color: #a3cf06; font-weight: bold;">0</span> / <span id="potential-badges-count" style="color: #ebebeb;">0</span>
+    </div>
+
+    <div>
+        Craftable Badges: <span id="craftable-badges-count" style="color: #a3cf06; font-weight: bold;">0</span>
+    </div>
+    
+    <div>
+        Extra Badges: <span id="extra-badges-count" style="color: #ebebeb; font-weight: bold;">0</span>
+    </div>
+
+    <div id="trade-limit-status" style="margin-top: 8px; padding-top: 5px; border-top: 1px solid #2d2b2b;">
+        Trade Status: <span id="trade-status-message">Checking...</span>
+    </div>
+</div>`;
+
+        if (referenceElement) {
+            referenceElement.insertAdjacentHTML('beforebegin', htmlPanel);
+            this.updatePanel(this.calculateBadgeGameInformation());
+        }
+    }
+
+    this.updatePanel = (data) => {
+        const elements = {
+            owned: document.getElementById('cards-owned-count'),
+            total: document.getElementById('total-cards-count'),
+            craftable: document.getElementById('craftable-badges-count'),
+            extra: document.getElementById('extra-badges-count'),
+            status: document.getElementById('trade-status-message'),
+            ready: document.getElementById('craftable-badges-count-ready'),
+            totalPotential: document.getElementById('potential-badges-count')
+        };
+
+        if (elements.owned) elements.owned.textContent = data.ownedCards;
+        if (elements.total) elements.total.textContent = data.totalCards;
+        if (elements.craftable) elements.craftable.textContent = data.craftable;
+        if (elements.extra) elements.extra.textContent = data.extra;
+        if (elements.ready) elements.ready.textContent = data.ready;
+        if (elements.totalPotential) elements.totalPotential.textContent = data.totalPotential;
+
+        if (elements.status) {
+            elements.status.textContent = data.status.message;
+            elements.status.style.color = data.status.color || '#afafaf';
+        }
+    }
+
+    this.calculateBadgeGameInformation = () => {
+
+        let totalCardsCount = document.querySelectorAll(".badge_card_set_card").length;
+        let cardsOwnedCount = this.countOwnedCards();
+        let totalCraftableBadges = Math.floor(cardsOwnedCount/totalCardsCount);
+
+        let craftableBadgesCount = this.calculateCraftableBadges();
+        let extraBadgesCount = totalCraftableBadges - craftableBadgesCount;
+        let tradeStatus = this.calculateStatus(totalCraftableBadges);
+        let ready = this.calculateMinimumCardQuantity();
+
+       return {
+           totalCards: totalCardsCount,
+           ownedCards: cardsOwnedCount,
+           craftable: craftableBadgesCount,
+           extra: extraBadgesCount,
+           totalPotential: totalCraftableBadges,
+           ready: ready,
+           status: tradeStatus,
+       };
+    }
+
+    this.countOwnedCards = () => {
+        const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
+        return Array.from(qtyElements).reduce((sum, el) => {
+            const match = el.innerText.match(/\d+/);
+            return sum + (match ? parseInt(match[0], 10) : 0);
+        }, 0);
+    }
+
+    this.extractCurrentBadgeLevel = () => {
+        const element = document.querySelector('.badge_info_description div:nth-child(2)');
+        const text = element.innerText;
+
+        const match = text.match(/Level\s+(\d+),/);
+
+        if (match) {
+            return parseInt(match[1], 10);
+        }
+
+        return 0;
+    }
+
+    this.calculateCraftableBadges = (totalCraftableBadges) => {
+        let maxCraftableBadges = 5 - this.extractCurrentBadgeLevel();
+
+        if(maxCraftableBadges === 0) {
+            return 0;
+        }
+
+        if(maxCraftableBadges >= totalCraftableBadges) {
+            return totalCraftableBadges;
+        } else {
+            return maxCraftableBadges;
+        }
+    }
+
+    this.calculateStatus = (totalCraftableBadges) => {
+        let minimumCardQuantity = this.calculateMinimumCardQuantity();
+        let currentBadgeLevel = this.extractCurrentBadgeLevel();
+
+        if(currentBadgeLevel === 5) {
+            return {
+                message: "Maximum reached (Level 5)",
+                color: "#ff4d4d"
+            };
+        }
+
+        if(minimumCardQuantity === 0) {
+            return {
+                message: "No cards available",
+                color: "#666666"
+            };
+        }
+
+        if(minimumCardQuantity < totalCraftableBadges) {
+            return {
+                message: "Trades available",
+                color: "#a3cf06"
+            };
+        }
+
+        return {
+            message: "Trades complete",
+            color: "#67c1f5"
+        };
+    }
+
+    this.calculateMinimumCardQuantity = () => {
+        const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
+
+        const quantities = Array.from(qtyElements).map(el => {
+            const match = el.innerText.match(/\d+/);
+            return match ? parseInt(match[0], 10) : 0;
+        });
+
+        if (quantities.length === 0) return 0;
+
+        return Math.min(...quantities);
+    }
+
+}
+
+BadgeGameInformation.prototype = Object.create(Renderable.prototype);
 
 function BoosterPackFrequencyAnalyser() {
     Renderable.call(this);
@@ -235,6 +408,8 @@ function BoosterPackFrequencyAnalyser() {
     }
 
 }
+
+BoosterPackFrequencyAnalyser.prototype = Object.create(Renderable.prototype);
 
 function GameCardLinks() {
     Renderable.call(this);

@@ -9,6 +9,7 @@ This script enhanced the famous marketplace **[Steam](https://store.steampowered
 * Add links to SteamTrade Matcher and the game's badge page in the [trade offers page](https://steamcommunity.com/id/s3rxus/tradeoffers/)  
 * Add link to SteamTrade Matcher page in the [game's badge page](https://steamcommunity.com/id/s3rxus/gamecards/281750)
 * Add an option to extract all booster packs prices in gems from [booster pack creator page](https://steamcommunity.com//tradingcards/boostercreator).
+* Add a panel in the game card page to show the collection badge progress.
 
 ### Supported sites
 
@@ -49,6 +50,8 @@ No extra configuration required.
 ![links to SteamTrade Matcher and the game’s badge page on the trade offers page](screenshots/steam-enhanced-6.png)
 
 ![link to the SteamTrade Matcher page on the game’s badge page](screenshots/steam-enhanced-7.png)
+
+![Collection badge progress](screenshots/steam-enhanced-8.png)
 
 
 
