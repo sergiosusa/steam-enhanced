@@ -725,6 +725,6 @@
         let steamEnhanced = new SteamEnhanced();
         steamEnhanced.render();
     } catch (exception) {
-        alert(exception);
+        console.error('[Steam Enhanced]', exception);
     }
 })();
