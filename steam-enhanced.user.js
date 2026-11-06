@@ -16,78 +16,75 @@
 
 (function () {
     'use strict';
-    try {
-        let steamEnhanced = new SteamEnhanced();
-        steamEnhanced.render();
-    } catch (exception) {
-        alert(exception);
-    }
-})();
 
-function SteamEnhanced() {
-    Renderer.call(this);
+    class Renderer {
+        constructor() {
+            this.rendererList = [];
+            this.globalRenderList = [];
+        }
 
-    this.rendererList = [
-        new WalletBalanceChart(),
-        new MassiveActivator(),
-        new BoosterPackPricesExtractor(),
-        new TradeOffersHelper(),
-        new GameCardLinks(),
-        new BoosterPackFrequencyAnalyser(),
-        new BadgeGameInformation()
-    ];
+        render() {
+            let renderer = this.findRenderer();
 
-    this.globalRenderList = [
-        new RedeemButton()
-    ];
-}
+            renderer.forEach(renderer => {
+                renderer.render();
+            });
 
-SteamEnhanced.prototype = Object.create(Renderer.prototype);
+            this.globalRender();
+        }
 
-function Renderer() {
-    this.rendererList = [];
-    this.globalRenderList = [];
+        findRenderer() {
+            return this.rendererList.filter(renderer => renderer.canHandleCurrentPage());
+        }
 
-    this.render = () => {
-        let renderer = this.findRenderer();
-
-        renderer.forEach(renderer => {
-            renderer.render();
-        })
-
-        this.globalRender();
+        globalRender() {
+            return this.globalRenderList.map(renderer => renderer.render());
+        }
     }
 
-    this.findRenderer = () => {
-        return this.rendererList.filter(renderer => renderer.canHandleCurrentPage());
-    };
+    class SteamEnhanced extends Renderer {
+        constructor() {
+            super();
 
-    this.globalRender = function () {
-        return this.globalRenderList.map(renderer => renderer.render());
+            this.rendererList = [
+                new WalletBalanceChart(),
+                new MassiveActivator(),
+                new BoosterPackPricesExtractor(),
+                new TradeOffersHelper(),
+                new GameCardLinks(),
+                new BoosterPackFrequencyAnalyser(),
+                new BadgeGameInformation()
+            ];
+
+            this.globalRenderList = [
+                new RedeemButton()
+            ];
+        }
     }
-}
 
-function Renderable() {
-    this.handlePage = "";
+    class Renderable {
+        constructor(handlePage = "") {
+            this.handlePage = handlePage;
+        }
 
-    this.canHandleCurrentPage = () => {
-        return null !== document.location.href.match(this.handlePage);
-    };
+        canHandleCurrentPage() {
+            return null !== document.location.href.match(this.handlePage);
+        }
 
-    this.showAlert = (text) => {
-        alert(text);
+        showAlert(text) {
+            alert(text);
+        }
     }
-}
 
-function BadgeGameInformation() {
-    Renderable.call(this);
+    class BadgeGameInformation extends Renderable {
+        constructor() {
+            super(/https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g);
+        }
 
-    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g
+        render() {
+            const referenceElement = document.querySelector('.badge_detail_tasks');
 
-    this.render = () => {
-        const referenceElement = document.querySelector('.badge_detail_tasks');
-
-        const htmlPanel = `<div id="steam-cards-summary-panel" style="border: 1px solid #2d2b2b; border-radius: 3px; min-width: 320px; padding: 12px; background-color: rgba(0, 0, 0, 0.3); color: #afafaf; font-size: 13px; line-height: 1.6;max-width: 50%;margin:8px auto;">
+            const htmlPanel = `<div id="steam-cards-summary-panel" style="border: 1px solid #2d2b2b; border-radius: 3px; min-width: 320px; padding: 12px; background-color: rgba(0, 0, 0, 0.3); color: #afafaf; font-size: 13px; line-height: 1.6;max-width: 50%;margin:8px auto;">
     <div style="color: #ffffff; font-weight: bold; border-bottom: 1px solid #2d2b2b; padding-bottom: 5px;">
         Collection Progress
     </div>
@@ -113,235 +110,222 @@ function BadgeGameInformation() {
     </div>
 </div>`;
 
-        if (referenceElement) {
-            referenceElement.insertAdjacentHTML('beforebegin', htmlPanel);
-            this.updatePanel(this.calculateBadgeGameInformation());
-        }
-    }
-
-    this.updatePanel = (data) => {
-        const elements = {
-            owned: document.getElementById('cards-owned-count'),
-            total: document.getElementById('total-cards-count'),
-            craftable: document.getElementById('craftable-badges-count'),
-            extra: document.getElementById('extra-badges-count'),
-            status: document.getElementById('trade-status-message'),
-            ready: document.getElementById('craftable-badges-count-ready'),
-            totalPotential: document.getElementById('potential-badges-count')
-        };
-
-        if (elements.owned) elements.owned.textContent = data.ownedCards;
-        if (elements.total) elements.total.textContent = data.totalCards;
-        if (elements.craftable) elements.craftable.textContent = data.craftable;
-        if (elements.extra) elements.extra.textContent = data.extra;
-        if (elements.ready) elements.ready.textContent = data.ready;
-        if (elements.totalPotential) elements.totalPotential.textContent = data.totalPotential;
-
-        if (elements.status) {
-            elements.status.textContent = data.status.message;
-            elements.status.style.color = data.status.color || '#afafaf';
-        }
-    }
-
-    this.calculateBadgeGameInformation = () => {
-
-        let totalCardsCount = this.getTotalCardsCount();
-        let cardsOwnedCount = this.countOwnedCards();
-        let totalCraftableBadges = Math.floor(cardsOwnedCount / totalCardsCount);
-
-        let craftableBadgesCount = this.calculateCraftableBadges();
-        let extraBadgesCount = this.calculateExtraBadgesCount(totalCraftableBadges, craftableBadgesCount);
-        let tradeStatus = this.calculateStatus(totalCraftableBadges);
-        let ready = this.calculateMinimumCardQuantity();
-
-        return {
-            totalCards: totalCardsCount,
-            ownedCards: cardsOwnedCount,
-            craftable: craftableBadgesCount,
-            extra: extraBadgesCount,
-            totalPotential: totalCraftableBadges,
-            ready: ready,
-            status: tradeStatus,
-        };
-    }
-
-    this.getTotalCardsCount = () => {
-        return document.querySelectorAll(".badge_card_set_card").length;
-    }
-
-    this.countOwnedCards = () => {
-        const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
-        return Array.from(qtyElements).reduce((sum, el) => {
-            const match = el.innerText.match(/\d+/);
-            return sum + (match ? parseInt(match[0], 10) : 0);
-        }, 0);
-    }
-
-    this.extractCurrentBadgeLevel = () => {
-        const element = document.querySelector('.badge_info_description div:nth-child(2)');
-
-        if (!element) {
-            return 0;
-        }
-
-        const text = element.innerText;
-
-        const match = text.match(/Level\s+(\d+),/);
-
-        if (match) {
-            return parseInt(match[1], 10);
-        }
-
-        return 0;
-    }
-
-    this.calculateCraftableBadges = (totalCraftableBadges) => {
-        let maxCraftableBadges = 5 - this.extractCurrentBadgeLevel();
-
-        if (maxCraftableBadges === 0) {
-            return 0;
-        }
-
-        if (maxCraftableBadges >= totalCraftableBadges) {
-            return totalCraftableBadges;
-        } else {
-            return maxCraftableBadges;
-        }
-    }
-
-    this.calculateStatus = (totalCraftableBadges) => {
-        let minimumCardQuantity = this.calculateMinimumCardQuantity();
-        let totalCardQuantity = this.countOwnedCards();
-
-        if (totalCardQuantity === 0) {
-            return {
-                message: "No cards available",
-                color: "#666666"
-            };
-        }
-
-        if (minimumCardQuantity < totalCraftableBadges) {
-            return {
-                message: "Trades available",
-                color: "#a3cf06"
-            };
-        }
-
-        return {
-            message: "Trades complete",
-            color: "#67c1f5"
-        };
-    }
-
-    this.calculateMinimumCardQuantity = () => {
-        const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
-        const totalCardsCount = this.getTotalCardsCount();
-
-        if(qtyElements.length !== totalCardsCount) {
-            return 0;
-        }
-
-        const quantities = Array.from(qtyElements).map(el => {
-            const match = el.innerText.match(/\d+/);
-            return match ? parseInt(match[0], 10) : 0;
-        });
-
-        if (quantities.length === 0) return 0;
-
-        return Math.min(...quantities);
-    }
-
-    this.calculateExtraBadgesCount = (totalCraftableBadges, craftableBadgesCount) => {
-        let extraBadgesCount = totalCraftableBadges - craftableBadgesCount;
-        if (extraBadgesCount < 0) {
-            return 0;
-        }
-        return extraBadgesCount;
-    }
-}
-
-BadgeGameInformation.prototype = Object.create(Renderable.prototype);
-
-function BoosterPackFrequencyAnalyser() {
-    Renderable.call(this);
-
-    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/inventoryhistory/g
-
-    this.render = () => {
-        let referenceNode = document.querySelector("#BG_bottom #mainContents #inventory_history_table");
-
-        const containerNode = this.templateContainerNode();
-
-        containerNode.innerHTML = '<div style="display: flex; justify-content: center; flex-direction: column;">' +
-            '<div id="analysis-result"></div>' +
-            '<div style="display: flex;justify-content: space-evenly;">' +
-            '<a id="load-more-and-re-calculate" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Load more and Recalculate</span></a>' +
-            '<a id="show-booster-packs" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Show Only Booster packs</span></a>' +
-            '</div>' +
-            '</div>';
-        referenceNode.parentNode.insertBefore(containerNode, referenceNode);
-
-        document.querySelector("#show-booster-packs").addEventListener('click', this.hideNonBoosterPackEntrance)
-        document.querySelector("#load-more-and-re-calculate").addEventListener('click', this.loadMoreHistoryAndReCalculate)
-        document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
-    }
-
-    this.loadMoreHistoryAndReCalculate = () => {
-        InventoryHistory_LoadMore();
-
-        setTimeout(() => {
-            document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
-        }, 3000);
-
-    }
-
-    this.hideNonBoosterPackEntrance = () => {
-        // Seleccionamos todos los nodos de historial
-        const rows = document.querySelectorAll('.tradehistoryrow');
-
-        rows.forEach(row => {
-            const description = row.querySelector('.tradehistory_event_description');
-
-            if (description && description.textContent.includes('Earned a booster pack')) {
-                // Mostramos este nodo
-                row.style.display = '';
-            } else {
-                // Ocultamos los que no sean booster packs
-                row.style.display = 'none';
+            if (referenceElement) {
+                referenceElement.insertAdjacentHTML('beforebegin', htmlPanel);
+                this.updatePanel(this.calculateBadgeGameInformation());
             }
-        });
+        }
+
+        updatePanel(data) {
+            const elements = {
+                owned: document.getElementById('cards-owned-count'),
+                total: document.getElementById('total-cards-count'),
+                craftable: document.getElementById('craftable-badges-count'),
+                extra: document.getElementById('extra-badges-count'),
+                status: document.getElementById('trade-status-message'),
+                ready: document.getElementById('craftable-badges-count-ready'),
+                totalPotential: document.getElementById('potential-badges-count')
+            };
+
+            if (elements.owned) elements.owned.textContent = data.ownedCards;
+            if (elements.total) elements.total.textContent = data.totalCards;
+            if (elements.craftable) elements.craftable.textContent = data.craftable;
+            if (elements.extra) elements.extra.textContent = data.extra;
+            if (elements.ready) elements.ready.textContent = data.ready;
+            if (elements.totalPotential) elements.totalPotential.textContent = data.totalPotential;
+
+            if (elements.status) {
+                elements.status.textContent = data.status.message;
+                elements.status.style.color = data.status.color || '#afafaf';
+            }
+        }
+
+        calculateBadgeGameInformation() {
+            let totalCardsCount = this.getTotalCardsCount();
+            let cardsOwnedCount = this.countOwnedCards();
+            let totalCraftableBadges = Math.floor(cardsOwnedCount / totalCardsCount);
+
+            let craftableBadgesCount = this.calculateCraftableBadges();
+            let extraBadgesCount = this.calculateExtraBadgesCount(totalCraftableBadges, craftableBadgesCount);
+            let tradeStatus = this.calculateStatus(totalCraftableBadges);
+            let ready = this.calculateMinimumCardQuantity();
+
+            return {
+                totalCards: totalCardsCount,
+                ownedCards: cardsOwnedCount,
+                craftable: craftableBadgesCount,
+                extra: extraBadgesCount,
+                totalPotential: totalCraftableBadges,
+                ready: ready,
+                status: tradeStatus,
+            };
+        }
+
+        getTotalCardsCount() {
+            return document.querySelectorAll(".badge_card_set_card").length;
+        }
+
+        countOwnedCards() {
+            const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
+            return Array.from(qtyElements).reduce((sum, el) => {
+                const match = el.innerText.match(/\d+/);
+                return sum + (match ? parseInt(match[0], 10) : 0);
+            }, 0);
+        }
+
+        extractCurrentBadgeLevel() {
+            const element = document.querySelector('.badge_info_description div:nth-child(2)');
+
+            if (!element) {
+                return 0;
+            }
+
+            const text = element.innerText;
+
+            const match = text.match(/Level\s+(\d+),/);
+
+            if (match) {
+                return parseInt(match[1], 10);
+            }
+
+            return 0;
+        }
+
+        calculateCraftableBadges(totalCraftableBadges) {
+            let maxCraftableBadges = 5 - this.extractCurrentBadgeLevel();
+
+            if (maxCraftableBadges === 0) {
+                return 0;
+            }
+
+            if (maxCraftableBadges >= totalCraftableBadges) {
+                return totalCraftableBadges;
+            } else {
+                return maxCraftableBadges;
+            }
+        }
+
+        calculateStatus(totalCraftableBadges) {
+            let minimumCardQuantity = this.calculateMinimumCardQuantity();
+            let totalCardQuantity = this.countOwnedCards();
+
+            if (totalCardQuantity === 0) {
+                return {
+                    message: "No cards available",
+                    color: "#666666"
+                };
+            }
+
+            if (minimumCardQuantity < totalCraftableBadges) {
+                return {
+                    message: "Trades available",
+                    color: "#a3cf06"
+                };
+            }
+
+            return {
+                message: "Trades complete",
+                color: "#67c1f5"
+            };
+        }
+
+        calculateMinimumCardQuantity() {
+            const qtyElements = document.querySelectorAll(".badge_card_set_text_qty");
+            const totalCardsCount = this.getTotalCardsCount();
+
+            if (qtyElements.length !== totalCardsCount) {
+                return 0;
+            }
+
+            const quantities = Array.from(qtyElements).map(el => {
+                const match = el.innerText.match(/\d+/);
+                return match ? parseInt(match[0], 10) : 0;
+            });
+
+            if (quantities.length === 0) return 0;
+
+            return Math.min(...quantities);
+        }
+
+        calculateExtraBadgesCount(totalCraftableBadges, craftableBadgesCount) {
+            let extraBadgesCount = totalCraftableBadges - craftableBadgesCount;
+            if (extraBadgesCount < 0) {
+                return 0;
+            }
+            return extraBadgesCount;
+        }
     }
 
-    this.renderBoosterStats = (packs) => {
-        if (!packs || packs.length === 0) return '<div>No hay booster packs registrados.</div>';
-
-        // Ordenamos por fecha ascendente
-        packs.sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate));
-
-        const totalPacks = packs.length;
-
-        // Juegos distintos
-        const gamesSet = new Set(packs.map(p => p.gameName));
-        const totalGames = gamesSet.size;
-
-        // Intervalos entre packs (en días)
-        const intervals = [];
-        for (let i = 1; i < packs.length; i++) {
-            const diffMs = new Date(packs[i].fullDate) - new Date(packs[i - 1].fullDate);
-            intervals.push(diffMs / (1000 * 60 * 60 * 24)); // convertir a días
+    class BoosterPackFrequencyAnalyser extends Renderable {
+        constructor() {
+            super(/https:\/\/steamcommunity\.com\/id\/(.*)\/inventoryhistory/g);
         }
-        const avgInterval = intervals.length > 0 ? (intervals.reduce((a, b) => a + b, 0) / intervals.length).toFixed(2) : 'N/A';
 
-        // Último pack
-        const lastPack = packs[packs.length - 1];
-        const lastDateStr = new Date(lastPack.fullDate).toLocaleString();
+        render() {
+            let referenceNode = document.querySelector("#BG_bottom #mainContents #inventory_history_table");
 
-        // Próximo pack estimado
-        const nextPackDate = intervals.length > 0 ? new Date(new Date(lastPack.fullDate).getTime() + intervals.reduce((a, b) => a + b, 0) / intervals.length * 24 * 60 * 60 * 1000) : null;
-        const nextPackStr = nextPackDate ? nextPackDate.toLocaleString() : 'N/A';
+            const containerNode = this.templateContainerNode();
 
-        // Generamos HTML
-        let html = `
+            containerNode.innerHTML = '<div style="display: flex; justify-content: center; flex-direction: column;">' +
+                '<div id="analysis-result"></div>' +
+                '<div style="display: flex;justify-content: space-evenly;">' +
+                '<a id="load-more-and-re-calculate" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Load more and Recalculate</span></a>' +
+                '<a id="show-booster-packs" class="btn_darkblue_white_innerfade btn_medium new_trade_offer_btn" href="javascript:void(0)"><span>Show Only Booster packs</span></a>' +
+                '</div>' +
+                '</div>';
+            referenceNode.parentNode.insertBefore(containerNode, referenceNode);
+
+            document.querySelector("#show-booster-packs").addEventListener('click', () => this.hideNonBoosterPackEntrance());
+            document.querySelector("#load-more-and-re-calculate").addEventListener('click', () => this.loadMoreHistoryAndReCalculate());
+            document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
+        }
+
+        loadMoreHistoryAndReCalculate() {
+            InventoryHistory_LoadMore();
+
+            setTimeout(() => {
+                document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
+            }, 3000);
+        }
+
+        hideNonBoosterPackEntrance() {
+            const rows = document.querySelectorAll('.tradehistoryrow');
+
+            rows.forEach(row => {
+                const description = row.querySelector('.tradehistory_event_description');
+
+                if (description && description.textContent.includes('Earned a booster pack')) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+
+        renderBoosterStats(packs) {
+            if (!packs || packs.length === 0) return '<div>No hay booster packs registrados.</div>';
+
+            packs.sort((a, b) => new Date(a.fullDate) - new Date(b.fullDate));
+
+            const totalPacks = packs.length;
+
+            const gamesSet = new Set(packs.map(p => p.gameName));
+            const totalGames = gamesSet.size;
+
+            const intervals = [];
+            for (let i = 1; i < packs.length; i++) {
+                const diffMs = new Date(packs[i].fullDate) - new Date(packs[i - 1].fullDate);
+                intervals.push(diffMs / (1000 * 60 * 60 * 24));
+            }
+            const avgInterval = intervals.length > 0 ? (intervals.reduce((a, b) => a + b, 0) / intervals.length).toFixed(2) : 'N/A';
+
+            const lastPack = packs[packs.length - 1];
+            const lastDateStr = new Date(lastPack.fullDate).toLocaleString();
+
+            const nextPackDate = intervals.length > 0 ? new Date(new Date(lastPack.fullDate).getTime() + intervals.reduce((a, b) => a + b, 0) / intervals.length * 24 * 60 * 60 * 1000) : null;
+            const nextPackStr = nextPackDate ? nextPackDate.toLocaleString() : 'N/A';
+
+            let html = `
     <div style="background-color: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-bottom: 10px; color: #fff; font-family: sans-serif;text-align: center;">
       <h3 style="margin-top:0;">Booster Pack Statistics</h3>
       <p><strong>Total packs:</strong> ${totalPacks}</p>
@@ -351,65 +335,56 @@ function BoosterPackFrequencyAnalyser() {
       <p><strong>Next estimated pack:</strong> ${nextPackStr}</p>
   `;
 
-        html += '</div>';
+            html += '</div>';
 
-        return html;
-    }
+            return html;
+        }
 
-    this.extractBooterPackInformation = () => {
+        extractBooterPackInformation() {
+            const boosterPacks = [];
 
-        const boosterPacks = [];
+            document.querySelectorAll('.tradehistoryrow').forEach(row => {
+                const description = row.querySelector('.tradehistory_event_description');
 
-        document.querySelectorAll('.tradehistoryrow').forEach(row => {
-            const description = row.querySelector('.tradehistory_event_description');
+                if (description && description.textContent.includes('Earned a booster pack')) {
+                    const dateNode = row.querySelector('.tradehistory_date');
+                    const dateText = dateNode ? dateNode.childNodes[0].textContent.trim() : '';
+                    const timeNode = row.querySelector('.tradehistory_timestamp');
+                    const timeText = timeNode ? timeNode.textContent.trim() : '';
 
-            if (description && description.textContent.includes('Earned a booster pack')) {
+                    const [day, monthStr, year] = dateText.replace(',', '').split(' ');
+                    const months = {
+                        Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+                        Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+                    };
+                    const month = months[monthStr];
 
-                // Fecha y hora en texto
-                const dateNode = row.querySelector('.tradehistory_date');
-                const dateText = dateNode ? dateNode.childNodes[0].textContent.trim() : '';
-                const timeNode = row.querySelector('.tradehistory_timestamp');
-                const timeText = timeNode ? timeNode.textContent.trim() : '';
+                    let [time, ampm] = [timeText.slice(0, -2), timeText.slice(-2).toLowerCase()];
+                    let [hours, minutes] = time.split(':').map(Number);
+                    if (ampm === 'pm' && hours < 12) hours += 12;
+                    if (ampm === 'am' && hours === 12) hours = 0;
 
-                // -------------------------------
-                // Parsear la fecha de forma segura
-                // -------------------------------
-                // Ejemplo: "22 Jan, 2026" -> día, mes, año
-                const [day, monthStr, year] = dateText.replace(',', '').split(' ');
-                const months = {
-                    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
-                    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
-                };
-                const month = months[monthStr];
+                    const fullDate = new Date(year, month, Number(day), hours, minutes);
 
-                // Parsear hora: "10:08pm"
-                let [time, ampm] = [timeText.slice(0, -2), timeText.slice(-2).toLowerCase()];
-                let [hours, minutes] = time.split(':').map(Number);
-                if (ampm === 'pm' && hours < 12) hours += 12;
-                if (ampm === 'am' && hours === 12) hours = 0;
+                    const itemNameNode = row.querySelector('.history_item_name');
+                    let gameName = itemNameNode ? itemNameNode.textContent.trim() : '';
+                    gameName = gameName.replace(/\s*Booster Pack$/i, '').trim();
 
-                const fullDate = new Date(year, month, Number(day), hours, minutes);
+                    boosterPacks.push({
+                        gameName,
+                        dateText,
+                        timeText,
+                        fullDate
+                    });
+                }
+            });
 
-                // Nombre del juego sin "Booster Pack"
-                const itemNameNode = row.querySelector('.history_item_name');
-                let gameName = itemNameNode ? itemNameNode.textContent.trim() : '';
-                gameName = gameName.replace(/\s*Booster Pack$/i, '').trim();
+            return boosterPacks;
+        }
 
-                boosterPacks.push({
-                    gameName,
-                    dateText,
-                    timeText,
-                    fullDate
-                });
-            }
-        });
-
-        return boosterPacks;
-    }
-
-    this.templateContainerNode = () => {
-        const containerNode = document.createElement('div');
-        containerNode.style.cssText = `
+        templateContainerNode() {
+            const containerNode = document.createElement('div');
+            containerNode.style.cssText = `
           position: relative;
           background-color: rgba(0, 0, 0, 0.3);
           padding-left: 0;
@@ -418,353 +393,338 @@ function BoosterPackFrequencyAnalyser() {
           min-height: 36px;
           margin-bottom: 2px;
         `;
-        return containerNode;
+            return containerNode;
+        }
     }
 
-}
+    class GameCardLinks extends Renderable {
+        constructor() {
+            super(/https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g);
+        }
 
-BoosterPackFrequencyAnalyser.prototype = Object.create(Renderable.prototype);
+        render() {
+            let container = document.querySelector(".profile_small_header_text");
+            container.innerHTML += this.template();
+        }
 
-function GameCardLinks() {
-    Renderable.call(this);
+        template() {
+            let appId = document.location.pathname.match(/\/id\/(.*)\/gamecards\/(\d+)/)[2];
 
-    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/gamecards\//g
-
-    this.render = () => {
-        let container = document.querySelector(".profile_small_header_text");
-        container.innerHTML += this.template();
+            return '<div class="apphub_OtherSiteInfo" style="float: right;margin-left: 5px;"><a class="btnv6_blue_hoverfade btn_medium" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-' + appId + '"\n' +
+                '           target="_blank">\n' +
+                '            <span>Steam Card Exchange</span>\n' +
+                '        </a></div>';
+        }
     }
 
-    this.template = () => {
+    class TradeOffersHelper extends Renderable {
+        constructor() {
+            super(/https:\/\/steamcommunity\.com\/id\/(.*)\/tradeoffers/g);
+        }
 
-        let appId = document.location.pathname.match(/\/id\/(.*)\/gamecards\/(\d+)/)[2];
+        render() {
+            let tradeItems = document.querySelectorAll(".trade_item");
 
-        return '<div class="apphub_OtherSiteInfo" style="float: right;margin-left: 5px;"><a class="btnv6_blue_hoverfade btn_medium" href="https://www.steamcardexchange.net/index.php?inventorygame-appid-' + appId + '"\n' +
-            '           target="_blank">\n' +
-            '            <span>Steam Card Exchange</span>\n' +
-            '        </a></div>';
+            for (let index = 0; index < tradeItems.length && index < 30; index++) {
+                let tradeItem = tradeItems[index];
+
+                let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
+
+                fetch(
+                    "https://steamcommunity.com/economy/itemclasshover/[APP]/[CLASS]/0?content_only=1&l=english"
+                        .replace("[APP]", itemInfo[1])
+                        .replace("[CLASS]", itemInfo[2])
+                ).then(function (response) {
+                    return response.text();
+                }).then((text) => {
+                    tradeItem.innerHTML = this.template(text.match(/app_(\d*)/)[1]) + tradeItem.innerHTML;
+                    tradeItem.style.height = "95px";
+                }).catch(function (err) {
+                    console.warn('Something went wrong.', err);
+                });
+            }
+        }
+
+        template(appid) {
+            return "<div style='text-align:center;'>" +
+                "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
+                "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
+                "</a>" +
+                "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
+                "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
+                "</a>" +
+                "</div>";
+        }
     }
-}
 
-GameCardLinks.prototype = Object.create(Renderable.prototype);
+    class MassiveActivator extends Renderable {
+        constructor() {
+            super(/https:\/\/store.steampowered\.com\/account\/registerkey(\?.*)*/g);
+            this.processId = null;
+            this.keyList = [];
+            this.gamesActived = [];
+        }
 
-function TradeOffersHelper() {
-    Renderable.call(this);
+        render() {
+            this.fillRequiredFields();
 
-    this.handlePage = /https:\/\/steamcommunity\.com\/id\/(.*)\/tradeoffers/g
+            let referenceBlock = document.querySelector("#purchase_confirm_ssa").previousElementSibling;
+            let contentDiv = document.createElement("div");
+            contentDiv.id = "massiveActivatorContainer";
+            contentDiv.setAttribute("style", "display: flex;align-items: flex-end;");
+            contentDiv.innerHTML = '<div style="width: 452px;"><br><label for="textarea-keys">Product Codes (separated by comma)</label><textarea id="textarea-keys"></textarea><br \></div><div class="button_row"><a id="activatingButton" class="btnv6_blue_hoverfade btn_medium" href="#" ><span>Continue</span></a></div>';
+            referenceBlock.append(contentDiv);
 
-    this.render = () => {
+            let activatingButton = document.querySelector("#activatingButton");
+            activatingButton.onclick = () => this.startActivating();
 
-        let tradeItems = document.querySelectorAll(".trade_item");
+            this.fillKeysField();
+        }
 
-        for (let index = 0; index < tradeItems.length && index < 30; index++) {
-            let tradeItem = tradeItems[index];
+        startActivating() {
+            let keys = document.querySelector("#textarea-keys").value;
 
-            let itemInfo = tradeItem.getAttribute("data-economy-item").match(/classinfo\/(\d*)\/(\d*)/);
+            if (!keys) {
+                this.showAlert("There are no keys to activate.");
+                return;
+            }
 
-            fetch(
-                "https://steamcommunity.com/economy/itemclasshover/[APP]/[CLASS]/0?content_only=1&l=english"
-                    .replace("[APP]", itemInfo[1])
-                    .replace("[CLASS]", itemInfo[2])
-            ).then(function (response) {
-                return response.text();
-            }).then(function (text) {
-                tradeItem.innerHTML = template(text.match(/app_(\d*)/)[1]) + tradeItem.innerHTML;
-                tradeItem.style.height = "95px";
-            }).catch(function (err) {
-                console.warn('Something went wrong.', err);
+            this.keyList = keys.split(",");
+
+            document.querySelector("#massiveActivatorContainer").style.opacity = "0.2";
+
+            this.processId = setInterval(() => {
+
+                if (this.keyList.length === 0) {
+                    clearInterval(this.processId);
+                    document.querySelector("#massiveActivatorContainer").style.opacity = "1";
+                    if (this.gamesActived.length > 0) {
+                        this.showAlert("The activation process has finished.\n\nThe following games have been activated:\n" + this.gamesActived.join("\n"));
+                        this.gamesActived = [];
+                    } else {
+                        this.showAlert("No key has been activated successfully");
+                    }
+                    return;
+                }
+
+                let key = this.keyList.shift();
+                document.querySelector("#product_key").value = key.trim();
+                RegisterProductKey();
+
+                setTimeout(() => {
+                    let responseContainer = document.querySelector("div.registerkey_lineitem");
+
+                    if (responseContainer) {
+                        let gameName = responseContainer.innerHTML;
+                        if (this.gamesActived.indexOf(gameName) === -1) {
+                            this.gamesActived.push(gameName);
+                        }
+                    }
+
+                }, 3000);
+
+            }, 5000);
+        }
+
+        fillRequiredFields() {
+            setInterval(() => {
+                document.querySelector("#accept_ssa").checked = true;
+            }, 500);
+        }
+
+        fillKeysField() {
+            let urlSearchParams = new URLSearchParams(window.location.search);
+
+            if (urlSearchParams.has("key")) {
+                document.querySelector("#textarea-keys").innerText = urlSearchParams.get("key");
+            }
+        }
+    }
+
+    class WalletBalanceChart extends Renderable {
+        constructor() {
+            super(/https:\/\/store\.steampowered\.com\/account\/history\//g);
+
+            this.labels = [];
+            this.delta = [];
+            this.wallet = [];
+        }
+
+        render() {
+            let contentDiv = document.createElement("div");
+            contentDiv.setAttribute("style", "height: 500px;width: 500px;margin: 0 auto;");
+            contentDiv.innerHTML = '<canvas id="myChart" width="400" height="400"></canvas>';
+            document.querySelector(".page_header_ctn").appendChild(contentDiv);
+
+            this.initializeChart();
+        }
+
+        collectData() {
+            let rows = document.querySelectorAll(".wallet_history_table tbody tr:not(#more_history)");
+
+            let labels = [];
+            let delta = [];
+            let wallet = [];
+
+            let index = -1;
+            let lastDate = "";
+
+            rows.forEach((row) => {
+
+                let currentDate = row.querySelector(".wht_date").innerText.replace(/\d+\s/i, "");
+
+                if (row.querySelector(".wht_wallet_change") === null || row.querySelector(".wht_wallet_balance") === null) {
+                    return;
+                }
+
+                let currentDelta = parseFloat(row.querySelector(".wht_wallet_change").innerText.replace("€", "").replace(",", "."));
+                let currentWallet = parseFloat(row.querySelector(".wht_wallet_balance").innerText.replace("€", "").replace(",", "."));
+
+                if (lastDate !== currentDate) {
+                    index++;
+                    lastDate = currentDate;
+                    labels[index] = currentDate;
+                }
+
+                if (delta[index] === undefined) {
+                    delta[index] = 0.0;
+                }
+
+                if (wallet[index] === undefined) {
+                    wallet[index] = currentWallet;
+                }
+
+                delta[index] += currentDelta;
+
+            });
+
+            this.labels = labels.reverse();
+            this.delta = delta.reverse();
+            this.wallet = wallet.reverse();
+        }
+
+        initializeChart() {
+            this.collectData();
+            const ctx = document.getElementById('myChart').getContext('2d');
+
+            const myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: this.labels,
+                    datasets: [
+                        {
+                            label: 'Change',
+                            data: this.delta,
+                            fill: false,
+                            borderColor: 'rgb(54, 162, 235)',
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Wallet',
+                            data: this.wallet,
+                            fill: false,
+                            borderColor: 'rgb(255, 99, 132)',
+                            tension: 0.1
+                        }
+                    ]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
             });
         }
-    };
-
-    function template(appid) {
-        return "<div style='text-align:center;'>" +
-            "<a target='_blank' href='https://www.steamcardexchange.net/index.php?inventorygame-appid-" + appid + "'>" +
-            "<img style='width: 16px;' src='https://www.steamcardexchange.net/favicon-16x16.png' />" +
-            "</a>" +
-            "<a target='_blank' href='https://steamcommunity.com/my/gamecards/" + appid + "'>" +
-            "<img style='width: 16px;' src='https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxH5rd9eDAjcFyv45SRYAFMIcKL_PArgVSL403ulRUWEndVKv6gpycAAojcwZW4uKnfQYxh6qfI24W7Y7hzIPTz_TwZb-Ix24HuZYl0--ZoMLlhlOh3Pqokg/16fx16fdpx2x' />" +
-            "</a>" +
-            "</div>";
     }
-}
 
-TradeOffersHelper.prototype = Object.create(Renderable.prototype);
-
-function MassiveActivator() {
-    Renderable.call(this);
-    this.handlePage = /https:\/\/store.steampowered\.com\/account\/registerkey(\?.*)*/g;
-    this.processId = null;
-    this.keyList = [];
-    this.gamesActived = [];
-
-    this.render = () => {
-        this.fillRequiredFields();
-
-        let referenceBlock = document.querySelector("#purchase_confirm_ssa").previousElementSibling;
-        let contentDiv = document.createElement("div");
-        contentDiv.id = "massiveActivatorContainer";
-        contentDiv.setAttribute("style", "display: flex;align-items: flex-end;");
-        contentDiv.innerHTML = '<div style="width: 452px;"><br><label for="textarea-keys">Product Codes (separated by comma)</label><textarea id="textarea-keys"></textarea><br \></div><div class="button_row"><a id="activatingButton" class="btnv6_blue_hoverfade btn_medium" href="#" ><span>Continue</span></a></div>';
-        referenceBlock.append(contentDiv);
-
-        let activatingButton = document.querySelector("#activatingButton");
-        activatingButton.onclick = this.startActivating;
-
-        this.fillKeysField();
-
-    };
-
-    this.startActivating = () => {
-
-        let keys = document.querySelector("#textarea-keys").value;
-
-        if (!keys) {
-            this.showAlert("There are no keys to activate.")
-            return;
+    class BoosterPackPricesExtractor extends Renderable {
+        constructor() {
+            super(/https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator(\/)?/g);
         }
 
-        this.keyList = keys.split(",");
-
-        document.querySelector("#massiveActivatorContainer").style.opacity = "0.2";
-
-        this.processId = setInterval((() => {
-
-            if (this.keyList.length === 0) {
-                clearInterval(this.processId);
-                document.querySelector("#massiveActivatorContainer").style.opacity = "1";
-                if (this.gamesActived.length > 0) {
-                    this.showAlert("The activation process has finished.\n\nThe following games have been activated:\n" + this.gamesActived.join("\n"));
-                    this.gamesActived = [];
-                } else {
-                    this.showAlert("No key has been activated successfully");
-                }
-                return;
-            }
-
-            let key = this.keyList.shift();
-            document.querySelector("#product_key").value = key.trim();
-            RegisterProductKey();
-
-            setTimeout((() => {
-                let responseContainer = document.querySelector("div.registerkey_lineitem");
-
-                if (responseContainer) {
-                    let gameName = responseContainer.innerHTML;
-                    if (this.gamesActived.indexOf(gameName) === -1) {
-                        this.gamesActived.push(gameName);
-                    }
-                }
-
-            }).bind(this), 3000);
-
-        }).bind(this), 5000);
-    };
-
-    this.fillRequiredFields = () => {
-        setInterval(() => {
-            document.querySelector("#accept_ssa").checked = true;
-        }, 500);
-    };
-
-    this.fillKeysField = () => {
-        let urlSearchParams = new URLSearchParams(window.location.search);
-
-        if (urlSearchParams.has("key")) {
-            document.querySelector("#textarea-keys").innerText = urlSearchParams.get("key");
+        render() {
+            let container = document.querySelector(".goostatus_right");
+            let paragraph = document.createElement('p');
+            paragraph.innerHTML = '<a id="extractButton" href="javascript:void()">Extract the games\' list with the price in gems to the clipboard.</a>';
+            container.appendChild(paragraph);
+            document.querySelector('#extractButton').onclick = () => this.extract();
         }
-    };
-}
 
-MassiveActivator.prototype = Object.create(Renderable.prototype);
+        extract() {
+            let boosterGameSelector = document.querySelector("#booster_game_selector");
+            let result = [];
 
-function WalletBalanceChart() {
-    Renderable.call(this);
-    this.handlePage = /https:\/\/store\.steampowered\.com\/account\/history\//g;
+            for (let index = 1; index < boosterGameSelector.options.length; index++) {
 
-    this.labels = [];
-    this.delta = [];
-    this.wallet = [];
-
-    this.render = () => {
-
-        let contentDiv = document.createElement("div");
-        contentDiv.setAttribute("style", "height: 500px;width: 500px;margin: 0 auto;");
-        contentDiv.innerHTML = '<canvas id="myChart" width="400" height="400"></canvas>';
-        document.querySelector(".page_header_ctn").appendChild(contentDiv);
-
-        this.initializeChart();
-
-    };
-
-    this.collectData = () => {
-
-        let rows = document.querySelectorAll(".wallet_history_table tbody tr:not(#more_history)");
-
-        let labels = [];
-        let delta = [];
-        let wallet = [];
-
-        let index = -1;
-        let lastDate = "";
-
-        rows.forEach((row) => {
-
-            let currentDate = row.querySelector(".wht_date").innerText.replace(/\d+\s/i, "");
-
-            if (row.querySelector(".wht_wallet_change") === null || row.querySelector(".wht_wallet_balance") === null) {
-                return;
-            }
-
-            let currentDelta = parseFloat(row.querySelector(".wht_wallet_change").innerText.replace("€", "").replace(",", "."));
-            let currentWallet = parseFloat(row.querySelector(".wht_wallet_balance").innerText.replace("€", "").replace(",", "."));
-
-            if (lastDate !== currentDate) {
-                index++;
-                lastDate = currentDate;
-                labels[index] = currentDate;
-            }
-
-            if (delta[index] === undefined) {
-                delta[index] = 0.0;
-            }
-
-            if (wallet[index] === undefined) {
-                wallet[index] = currentWallet;
-            }
-
-            delta[index] += currentDelta;
-
-        });
-
-        this.labels = labels.reverse();
-        this.delta = delta.reverse();
-        this.wallet = wallet.reverse();
-
-    };
-
-    this.initializeChart = () => {
-        this.collectData();
-        const ctx = document.getElementById('myChart').getContext('2d');
-
-        const myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: this.labels,
-                datasets: [
-                    {
-                        label: 'Change',
-                        data: this.delta,
-                        fill: false,
-                        borderColor: 'rgb(54, 162, 235)',
-                        tension: 0.1
-                    },
-                    {
-                        label: 'Wallet',
-                        data: this.wallet,
-                        fill: false,
-                        borderColor: 'rgb(255, 99, 132)',
-                        tension: 0.1
-                    }
-                ]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+                let boosterGameNode = CBoosterCreatorPage.CreateBoosterOption(boosterGameSelector.options[index].value, false);
+                if (boosterGameNode && boosterGameNode[0] !== undefined) {
+                    result.push(boosterGameSelector.options[index].text + "\t" + parseInt((/\d+\.*\d+/g).exec(boosterGameNode[0].innerText)[0].replace(".", "")));
                 }
             }
-        });
-    };
-}
-
-WalletBalanceChart.prototype = Object.create(Renderable.prototype);
-
-function BoosterPackPricesExtractor() {
-    Renderable.call(this);
-
-    this.handlePage = /https:\/\/steamcommunity\.com\/(\/)?tradingcards\/boostercreator(\/)?/g;
-
-    this.render = () => {
-
-        let container = document.querySelector(".goostatus_right");
-        let paragraph = document.createElement('p');
-        paragraph.innerHTML = '<a id="extractButton" href="javascript:void()">Extract the games\' list with the price in gems to the clipboard.</a>';
-        container.appendChild(paragraph);
-        document.querySelector('#extractButton').onclick = this.extract;
+            GM_setClipboard(result.join("\n"));
+            alert("Game list copied");
+        }
     }
 
-    this.extract = () => {
-        let boosterGameSelector = document.querySelector("#booster_game_selector");
-        let result = [];
+    class RedeemButton extends Renderable {
+        constructor() {
+            super(/.*/g);
+        }
 
-        for (let index = 1; index < boosterGameSelector.options.length; index++) {
-
-            let boosterGameNode = CBoosterCreatorPage.CreateBoosterOption(boosterGameSelector.options[index].value, false);
-            if (boosterGameNode && boosterGameNode[0] !== undefined) {
-                result.push(boosterGameSelector.options[index].text + "\t" + parseInt((/\d+\.*\d+/g).exec(boosterGameNode[0].innerText)[0].replace(".", "")));
+        render() {
+            switch (window.location.pathname) {
+                case "/chat/":
+                    this.renderButtonInChatPage();
+                    break;
+                default:
+                    this.renderButtonStandardPage();
             }
         }
-        GM_setClipboard(result.join("\n"));
-        alert("Game list copied");
-    };
-}
 
-BoosterPackPricesExtractor.prototype = Object.create(Renderable.prototype);
-
-function RedeemButton() {
-    Renderable.call(this);
-
-    this.handlePage = /.*/g;
-
-    this.render = () => {
-
-        switch (window.location.pathname) {
-            case "/chat/":
-                this.renderButtonInChatPage();
-                break;
-            default:
-                this.renderButtonStandardPage();
-        }
-    }
-
-    this.renderButtonStandardPage = () => {
-        let pivotElement = document.querySelector(".supernav_container a.username");
-
-        if (null == pivotElement) {
-            return;
-        }
-
-        let redeemLink = this.getRedeemBaseButton();
-        redeemLink.className = "menuitem";
-        redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
-        pivotElement.parentNode.insertBefore(redeemLink, pivotElement.nextSibling);
-    }
-
-    this.renderButtonInChatPage = () => {
-        let intervalId = setInterval((() => {
-            let pivotElement = document.querySelector('a[href="https://help.steampowered.com/"]');
+        renderButtonStandardPage() {
+            let pivotElement = document.querySelector(".supernav_container a.username");
 
             if (null == pivotElement) {
                 return;
             }
 
-            clearInterval(intervalId);
-
             let redeemLink = this.getRedeemBaseButton();
-            redeemLink.className = pivotElement.className;
-            pivotElement.parentNode.insertBefore(redeemLink, pivotElement);
-        }).bind(this), 2000);
+            redeemLink.className = "menuitem";
+            redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
+            pivotElement.parentNode.insertBefore(redeemLink, pivotElement.nextSibling);
+        }
+
+        renderButtonInChatPage() {
+            let intervalId = setInterval(() => {
+                let pivotElement = document.querySelector('a[href="https://help.steampowered.com/"]');
+
+                if (null == pivotElement) {
+                    return;
+                }
+
+                clearInterval(intervalId);
+
+                let redeemLink = this.getRedeemBaseButton();
+                redeemLink.className = pivotElement.className;
+                pivotElement.parentNode.insertBefore(redeemLink, pivotElement);
+            }, 2000);
+        }
+
+        getRedeemBaseButton() {
+            let redeemLink = document.createElement("a");
+            redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
+            redeemLink.innerText = "redeem";
+            redeemLink.target = "_blank";
+            return redeemLink;
+        }
     }
 
-    this.getRedeemBaseButton = () => {
-        let redeemLink = document.createElement("a");
-        redeemLink.href = "https://store.steampowered.com/account/registerkey?key=";
-        redeemLink.innerText = "redeem";
-        redeemLink.target = "_blank";
-        return redeemLink;
+    try {
+        let steamEnhanced = new SteamEnhanced();
+        steamEnhanced.render();
+    } catch (exception) {
+        alert(exception);
     }
-}
-
-BoosterPackPricesExtractor.prototype = Object.create(RedeemButton.prototype);
+})();
