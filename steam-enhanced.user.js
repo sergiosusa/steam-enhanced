@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Steam Enhanced
 // @namespace    https://sergiosusa.com
-// @version      0.19
+// @version      0.20
 // @description  This script enhanced the famous marketplace steam with some extra features.
 // @author       Sergio Susa (sergio@sergiosusa.com)
 // @match        https://store.steampowered.com/account/history/
@@ -280,12 +280,42 @@
             document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
         }
 
-        loadMoreHistoryAndReCalculate() {
-            InventoryHistory_LoadMore();
+        async loadMoreHistoryAndReCalculate() {
+            if (typeof InventoryHistory_LoadMore === "function") {
+                InventoryHistory_LoadMore();
+            } else if (typeof unsafeWindow !== "undefined" && typeof unsafeWindow.InventoryHistory_LoadMore === "function") {
+                unsafeWindow.InventoryHistory_LoadMore();
+            }
 
-            setTimeout(() => {
-                document.querySelector("#analysis-result").innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
-            }, 3000);
+            await this.waitForNewHistoryRows();
+            const analysisResult = document.querySelector("#analysis-result");
+            if (analysisResult) {
+                analysisResult.innerHTML = this.renderBoosterStats(this.extractBooterPackInformation());
+            }
+        }
+
+        waitForNewHistoryRows(timeout = 3000) {
+            return new Promise((resolve) => {
+                const table = document.querySelector("#inventory_history_table");
+                if (!table) {
+                    setTimeout(resolve, timeout);
+                    return;
+                }
+
+                let timer;
+                const observer = new MutationObserver(() => {
+                    clearTimeout(timer);
+                    observer.disconnect();
+                    resolve();
+                });
+
+                observer.observe(table, { childList: true, subtree: true });
+
+                timer = setTimeout(() => {
+                    observer.disconnect();
+                    resolve();
+                }, timeout);
+            });
         }
 
         hideNonBoosterPackEntrance() {
@@ -460,7 +490,6 @@
     class MassiveActivator extends Renderable {
         constructor() {
             super(/https:\/\/store.steampowered\.com\/account\/registerkey(\?.*)*/g);
-            this.processId = null;
             this.keyList = [];
             this.gamesActived = [];
         }
@@ -481,55 +510,122 @@
             this.fillKeysField();
         }
 
-        startActivating() {
-            let keys = document.querySelector("#textarea-keys").value;
+        async startActivating() {
+            let textarea = document.querySelector("#textarea-keys");
+            let keys = textarea ? textarea.value : "";
 
-            if (!keys) {
+            if (!keys.trim()) {
                 this.showAlert("There are no keys to activate.");
                 return;
             }
 
-            this.keyList = keys.split(",");
+            this.keyList = keys.split(",").map(key => key.trim()).filter(key => key.length > 0);
 
-            document.querySelector("#massiveActivatorContainer").style.opacity = "0.2";
+            if (this.keyList.length === 0) {
+                this.showAlert("There are no keys to activate.");
+                return;
+            }
 
-            this.processId = setInterval(() => {
+            const container = document.querySelector("#massiveActivatorContainer");
+            if (container) {
+                container.style.opacity = "0.2";
+            }
 
-                if (this.keyList.length === 0) {
-                    clearInterval(this.processId);
-                    document.querySelector("#massiveActivatorContainer").style.opacity = "1";
-                    if (this.gamesActived.length > 0) {
-                        this.showAlert("The activation process has finished.\n\nThe following games have been activated:\n" + this.gamesActived.join("\n"));
-                        this.gamesActived = [];
-                    } else {
-                        this.showAlert("No key has been activated successfully");
-                    }
-                    return;
-                }
+            for (const key of this.keyList) {
+                await this.activateKey(key);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            }
 
-                let key = this.keyList.shift();
-                document.querySelector("#product_key").value = key.trim();
+            if (container) {
+                container.style.opacity = "1";
+            }
+
+            if (this.gamesActived.length > 0) {
+                this.showAlert("The activation process has finished.\n\nThe following games have been activated:\n" + this.gamesActived.join("\n"));
+                this.gamesActived = [];
+            } else {
+                this.showAlert("No key has been activated successfully");
+            }
+        }
+
+        async activateKey(key) {
+            const productKeyInput = document.querySelector("#product_key");
+            const acceptSsa = document.querySelector("#accept_ssa");
+
+            if (acceptSsa) {
+                acceptSsa.checked = true;
+            }
+            if (productKeyInput) {
+                productKeyInput.value = key;
+            }
+
+            if (typeof RegisterProductKey === "function") {
                 RegisterProductKey();
+            } else if (typeof unsafeWindow !== "undefined" && typeof unsafeWindow.RegisterProductKey === "function") {
+                unsafeWindow.RegisterProductKey();
+            }
 
-                setTimeout(() => {
-                    let responseContainer = document.querySelector("div.registerkey_lineitem");
+            await this.waitForActivationResult();
+        }
 
+        waitForActivationResult(timeout = 5000) {
+            return new Promise((resolve) => {
+                let resolved = false;
+
+                const finish = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (observer) observer.disconnect();
+                    clearTimeout(timer);
+
+                    const responseContainer = document.querySelector("div.registerkey_lineitem");
                     if (responseContainer) {
-                        let gameName = responseContainer.innerHTML;
-                        if (this.gamesActived.indexOf(gameName) === -1) {
+                        const gameName = responseContainer.innerHTML.trim();
+                        if (gameName && this.gamesActived.indexOf(gameName) === -1) {
                             this.gamesActived.push(gameName);
                         }
                     }
+                    resolve();
+                };
 
-                }, 3000);
+                const observer = new MutationObserver(() => {
+                    const lineItem = document.querySelector("div.registerkey_lineitem");
+                    const errorDisplay = document.querySelector("#error_display, #registerkey_error");
+                    const isErrorVisible = errorDisplay && (errorDisplay.style.display !== "none" && errorDisplay.textContent.trim().length > 0);
 
-            }, 5000);
+                    if (lineItem || isErrorVisible) {
+                        finish();
+                    }
+                });
+
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    characterData: true
+                });
+
+                const timer = setTimeout(finish, timeout);
+            });
         }
 
         fillRequiredFields() {
-            setInterval(() => {
-                document.querySelector("#accept_ssa").checked = true;
-            }, 500);
+            const acceptSsa = document.querySelector("#accept_ssa");
+            if (acceptSsa) {
+                acceptSsa.checked = true;
+            }
+
+            const observer = new MutationObserver(() => {
+                const checkbox = document.querySelector("#accept_ssa");
+                if (checkbox && !checkbox.checked) {
+                    checkbox.checked = true;
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
         }
 
         fillKeysField() {
@@ -697,19 +793,31 @@
         }
 
         renderButtonInChatPage() {
-            let intervalId = setInterval(() => {
-                let pivotElement = document.querySelector('a[href="https://help.steampowered.com/"]');
+            let pivotElement = document.querySelector('a[href="https://help.steampowered.com/"]');
 
-                if (null == pivotElement) {
-                    return;
+            if (pivotElement) {
+                this.insertChatButton(pivotElement);
+                return;
+            }
+
+            const observer = new MutationObserver((mutations, obs) => {
+                let element = document.querySelector('a[href="https://help.steampowered.com/"]');
+                if (element) {
+                    obs.disconnect();
+                    this.insertChatButton(element);
                 }
+            });
 
-                clearInterval(intervalId);
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+        }
 
-                let redeemLink = this.getRedeemBaseButton();
-                redeemLink.className = pivotElement.className;
-                pivotElement.parentNode.insertBefore(redeemLink, pivotElement);
-            }, 2000);
+        insertChatButton(pivotElement) {
+            let redeemLink = this.getRedeemBaseButton();
+            redeemLink.className = pivotElement.className;
+            pivotElement.parentNode.insertBefore(redeemLink, pivotElement);
         }
 
         getRedeemBaseButton() {
